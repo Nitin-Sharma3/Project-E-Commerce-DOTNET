@@ -1,0 +1,374 @@
+@page
+@model RazorpayApi.Pages.RefundModel
+@{
+    ViewData["Title"] = "Refund Management";
+}
+
+<div style="width: 100%; max-width: 900px; margin: 0 auto; padding: 20px;">
+    <h1 style="text-align: center; margin-bottom: 40px;">💳 Refund Management</h1>
+
+    <!-- Alert Messages -->
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(34, 197, 94, 0.1)); border-left: 4px solid #10b981; padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #10b981;">
+            <strong>✅ Success!</strong> @Model.SuccessMessage
+            @if (Model.RefundResponse != null && !string.IsNullOrEmpty(Model.RefundResponse.RefundId))
+            {
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(16, 185, 129, 0.3);">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <small style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 2px;">Refund ID:</small>
+                            <code style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; word-break: break-all;">@Model.RefundResponse.RefundId</code>
+                        </div>
+                        <div>
+                            <small style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 2px;">Payment ID:</small>
+                            <code style="background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; font-size: 12px; word-break: break-all;">@Model.RefundResponse.PaymentId</code>
+                        </div>
+                        <div>
+                            <small style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 2px;">Refund Amount:</small>
+                            <strong style="font-size: 14px;">@(Model.RefundResponse.Amount.HasValue ? $"₹{(Model.RefundResponse.Amount.Value / 100m):N2}" : "Full payment amount")</strong>
+                        </div>
+                        <div>
+                            <small style="display: block; color: rgba(255,255,255,0.7); margin-bottom: 2px;">Status:</small>
+                            <strong style="font-size: 14px;">@Model.RefundResponse.Status?.ToUpper()</strong>
+                        </div>
+                    </div>
+                    <small style="display: block; margin-bottom: 8px;">⏱️ <em>The dashboard may take 1-5 minutes to reflect this refund.</em></small>
+                    <small style="display: block;">📊 View in <a href="https://dashboard.razorpay.com/app/payments" target="_blank" style="color: #10b981; text-decoration: underline;">Razorpay Dashboard</a></small>
+                </div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1)); border-left: 4px solid #ef4444; padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #ef4444;">
+            ❌ @Model.ErrorMessage
+        </div>
+    }
+
+    <!-- Tab Navigation -->
+    <div style="display: flex; gap: 12px; margin-bottom: 32px; border-bottom: 2px solid #111827;">
+        <button id="tab-create" onclick="switchTab('create')" class="tab-button @(Model.ActiveTab == "create" ? "active" : "")">
+            Create Refund
+        </button>
+        <button id="tab-status" onclick="switchTab('status')" class="tab-button @(Model.ActiveTab == "status" ? "active" : "")">
+            Check Status
+        </button>
+        <button id="tab-history" onclick="switchTab('history')" class="tab-button @(Model.ActiveTab == "history" ? "active" : "")">
+            Refund History
+        </button>
+    </div>
+
+    <!-- Tab 1: Create Refund -->
+    <div id="create-tab" style="display: @(Model.ActiveTab == "create" ? "block" : "none");">
+        <div style="background: #0f172a; border: 1px solid #111827; border-radius: 12px; padding: 32px;">
+            <h2 style="margin-bottom: 24px; color: #e5e7eb;">Create a Refund</h2>
+
+            <form method="post" asp-page-handler="CreateRefund" onsubmit="handleRefundSubmit(event)">
+                <!-- Payment ID -->
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; color: #9ca3af; font-weight: 500;">Payment ID *</label>
+                    <input type="text" 
+                           asp-for="PaymentId" 
+                           placeholder="Enter payment ID (e.g., pay_1234567890abcdef)" 
+                           style="width: 100%; padding: 12px; background: #020617; border: 1px solid #111827; color: #e5e7eb; border-radius: 8px; font-size: 14px;" 
+                           required 
+                           autocomplete="off" />
+                    <small style="color: #9ca3af; display: block; margin-top: 4px;">ℹ️ Only works for payments that haven't been refunded yet. Get a payment ID from the Payment page.</small>
+                </div>
+
+                <!-- Refund Type Selection -->
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 12px; color: #9ca3af; font-weight: 500;">Refund Type</label>
+                    <div style="display: flex; gap: 16px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="refundType" value="full" checked onchange="toggleRefundAmount()" style="margin-right: 8px; cursor: pointer;" />
+                            <span style="color: #e5e7eb;">Full Refund</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="refundType" value="partial" onchange="toggleRefundAmount()" style="margin-right: 8px; cursor: pointer;" />
+                            <span style="color: #e5e7eb;">Partial Refund</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Refund Amount (visible only for partial refund) -->
+                <div id="amountSection" style="margin-bottom: 24px; display: none;">
+                    <label style="display: block; margin-bottom: 8px; color: #9ca3af; font-weight: 500;">Refund Amount (₹) *</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: #e5e7eb; font-size: 18px; font-weight: 600;">₹</span>
+                        <input type="number" 
+                               asp-for="RefundAmount" 
+                               placeholder="Enter amount in rupees (e.g., 500)" 
+                               min="1"
+                               step="0.01"
+                               style="flex: 1; padding: 12px; background: #020617; border: 1px solid #111827; color: #e5e7eb; border-radius: 8px; font-size: 14px;" />
+                    </div>
+                    <small style="color: #9ca3af; display: block; margin-top: 4px;">ℹ️ Enter amount in rupees only. Backend will convert to paise automatically.</small>
+                </div>
+
+                <!-- Refund Notes -->
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; color: #9ca3af; font-weight: 500;">Notes (Optional)</label>
+                    <textarea asp-for="RefundNotes" 
+                              placeholder="Add any notes for this refund..." 
+                              rows="3" 
+                              style="width: 100%; padding: 12px; background: #020617; border: 1px solid #111827; color: #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" 
+                            asp-page-handler="FullRefund"
+                            id="fullRefundBtn"
+                            style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: opacity 0.2s ease, transform 0.1s ease; will-change: opacity; transform: translateZ(0);">
+                        Process Full Refund
+                    </button>
+                    <button type="submit" 
+                            asp-page-handler="PartialRefund"
+                            id="partialRefundBtn"
+                            style="flex: 1; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: opacity 0.2s ease, transform 0.1s ease; will-change: opacity; transform: translateZ(0); display: none;">
+                        Process Partial Refund
+                    </button>
+                    <button type="button" 
+                            onclick="clearRefundForm()"
+                            style="flex: 1; background: linear-gradient(135deg, #6b7280, #4b5563); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: opacity 0.2s ease, transform 0.1s ease; will-change: opacity; transform: translateZ(0);">
+                        Clear Form
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tab 2: Check Refund Status -->
+    <div id="status-tab" style="display: @(Model.ActiveTab == "status" ? "block" : "none");">
+        <div style="background: #0f172a; border: 1px solid #111827; border-radius: 12px; padding: 32px;">
+            <h2 style="margin-bottom: 24px; color: #e5e7eb;">Check Refund Status</h2>
+
+            <form method="post" asp-page-handler="GetRefundStatus">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; color: #9ca3af; font-weight: 500;">Payment ID *</label>
+                    <input type="text" 
+                           name="refundId" 
+                           placeholder="Enter payment ID (e.g., pay_1234567890abcdef)" 
+                           style="width: 100%; padding: 12px; background: #020617; border: 1px solid #111827; color: #e5e7eb; border-radius: 8px; font-size: 14px;" 
+                           required />
+                    <small style="color: #9ca3af; display: block; margin-top: 4px;">ℹ️ Enter a payment ID to see total refunded amount and all refunds for that payment.</small>
+                </div>
+
+                <button type="submit" 
+                        style="width: 100%; background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: opacity 0.2s ease, transform 0.1s ease; will-change: opacity; transform: translateZ(0);">
+                    Check Status
+                </button>
+            </form>
+
+            @if (Model.RefundStatus != null && Model.RefundStatus.Success)
+            {
+                <div style="margin-top: 32px; background: #020617; border: 1px solid #111827; border-radius: 8px; padding: 24px;">
+                    <h3 style="margin-bottom: 16px; color: #e5e7eb;">✅ Refund Summary</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #111827;">
+                            <td style="padding: 12px; color: #9ca3af; font-weight: 500;">Payment ID</td>
+                            <td style="padding: 12px; color: #e5e7eb;"><code style="background: #0f172a; padding: 4px 8px; border-radius: 4px;">@Model.RefundStatus.PaymentId</code></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #111827;">
+                            <td style="padding: 12px; color: #9ca3af; font-weight: 500;">Total Refunded Amount</td>
+                            <td style="padding: 12px; color: #10b981; font-weight: 600; font-size: 18px;">
+                                @(Model.RefundStatus.Amount.HasValue ? $"₹{(Model.RefundStatus.Amount.Value / 100m):N2}" : "N/A")
+                                <small style="display: block; color: #9ca3af; margin-top: 4px;">(@(Model.RefundStatus.Amount.HasValue ? $"{Model.RefundStatus.Amount.Value} paise" : ""))</small>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #111827;">
+                            <td style="padding: 12px; color: #9ca3af; font-weight: 500;">Overall Status</td>
+                            <td style="padding: 12px; color: #e5e7eb;">
+                                <span style="background: @(Model.RefundStatus.Status == "processed" ? "#10b981" : Model.RefundStatus.Status == "pending" ? "#f59e0b" : "#6b7280"); 
+                                           color: white; 
+                                           padding: 4px 12px; 
+                                           border-radius: 20px; 
+                                           font-size: 12px; 
+                                           font-weight: 600;">
+                                    @Model.RefundStatus.Status?.ToUpper()
+                                </span>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #111827;">
+                            <td style="padding: 12px; color: #9ca3af; font-weight: 500;">Latest Refund Date</td>
+                            <td style="padding: 12px; color: #e5e7eb;">@Model.RefundStatus.CreatedAt?.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        </tr>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Tab 3: Refund History -->
+    <div id="history-tab" style="display: @(Model.ActiveTab == "history" ? "block" : "none");">
+        <div style="background: #0f172a; border: 1px solid #111827; border-radius: 12px; padding: 32px;">
+            <h2 style="margin-bottom: 24px; color: #e5e7eb;">Refund History</h2>
+
+            <form method="post" asp-page-handler="GetPaymentRefunds">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; color: #9ca3af; font-weight: 500;">Payment ID *</label>
+                    <div style="display: flex; gap: 12px;">
+                        <input type="text" 
+                               asp-for="PaymentId" 
+                               placeholder="Enter payment ID to view all refunds" 
+                               style="flex: 1; padding: 12px; background: #020617; border: 1px solid #111827; color: #e5e7eb; border-radius: 8px; font-size: 14px;" 
+                               required />
+                        <button type="submit" 
+                                style="background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; white-space: nowrap; transition: all 0.3s ease;">
+                            View Refunds
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            @if (Model.PaymentRefunds != null && Model.PaymentRefunds.Count > 0)
+            {
+                <div style="margin-top: 24px;">
+                    @{
+                        // Group by RefundId to ensure unique refunds only
+                        var uniqueRefunds = Model.PaymentRefunds
+                            .Where(r => r.Success && !string.IsNullOrEmpty(r.RefundId))
+                            .GroupBy(r => r.RefundId)
+                            .Select(g => g.First())
+                            .ToList();
+                    }
+                    @if (uniqueRefunds.Count > 0)
+                    {
+                        @foreach (var refund in uniqueRefunds)
+                        {
+                            <div style="background: #020617; border: 1px solid #111827; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                                    <div>
+                                        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Refund ID</p>
+                                        <p style="color: #e5e7eb; font-weight: 600; word-break: break-all;">@refund.RefundId</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Amount</p>
+                                        <p style="color: #e5e7eb; font-weight: 600;">@(refund.Amount.HasValue ? $"₹{(refund.Amount.Value / 100m):N2}" : "N/A")</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Status</p>
+                                        <span style="background: @(refund.Status == "processed" ? "#10b981" : refund.Status == "pending" ? "#f59e0b" : "#6b7280"); 
+                                                   color: white; 
+                                                   padding: 4px 12px; 
+                                                   border-radius: 20px; 
+                                                   font-size: 12px; 
+                                                   font-weight: 600; 
+                                                   display: inline-block;">
+                                            @refund.Status?.ToUpper()
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Created At</p>
+                                        <p style="color: #e5e7eb; font-weight: 600;">@refund.CreatedAt?.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(refund.Notes))
+                                {
+                                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #111827;">
+                                        <p style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Notes</p>
+                                        <p style="color: #e5e7eb;">@refund.Notes</p>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .tab-button {
+        background: transparent;
+        color: #9ca3af;
+        border: none;
+        padding: 12px 24px;
+        cursor: pointer;
+        font-size: 16px;
+        border-bottom: none;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        will-change: background-color, color, border-color;
+        transform: translateZ(0);
+    }
+
+    .tab-button.active {
+        background: #7c3aed;
+        color: #fff;
+        border-bottom: 3px solid #7c3aed;
+    }
+
+    .tab-button:hover {
+        opacity: 0.9;
+    }
+</style>
+
+<script>
+    function switchTab(tabName) {
+        // Update tab displays
+        document.getElementById('create-tab').style.display = tabName === 'create' ? 'block' : 'none';
+        document.getElementById('status-tab').style.display = tabName === 'status' ? 'block' : 'none';
+        document.getElementById('history-tab').style.display = tabName === 'history' ? 'block' : 'none';
+
+        // Update button states
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    function toggleRefundAmount() {
+        const refundType = document.querySelector('input[name="refundType"]:checked').value;
+        const amountSection = document.getElementById('amountSection');
+        const fullRefundBtn = document.getElementById('fullRefundBtn');
+        const partialRefundBtn = document.getElementById('partialRefundBtn');
+
+        if (refundType === 'partial') {
+            amountSection.style.display = 'block';
+            fullRefundBtn.style.display = 'none';
+            partialRefundBtn.style.display = 'block';
+        } else {
+            amountSection.style.display = 'none';
+            fullRefundBtn.style.display = 'block';
+            partialRefundBtn.style.display = 'none';
+        }
+    }
+
+    function handleRefundSubmit(event) {
+        const refundType = document.querySelector('input[name="refundType"]:checked').value;
+        const paymentId = document.querySelector('input[name="PaymentId"]').value;
+
+        if (!paymentId.trim()) {
+            event.preventDefault();
+            alert('Please enter a Payment ID');
+            return;
+        }
+
+        if (refundType === 'partial') {
+            const amount = document.querySelector('input[name="RefundAmount"]').value;
+            if (!amount || parseInt(amount) <= 0) {
+                event.preventDefault();
+                alert('Please enter a valid refund amount');
+                return;
+            }
+        }
+    }
+
+    function clearRefundForm() {
+        document.querySelector('input[name="PaymentId"]').value = '';
+        document.querySelector('input[name="RefundAmount"]').value = '';
+        document.querySelector('textarea[name="RefundNotes"]').value = '';
+        document.querySelector('input[name="refundType"][value="full"]').checked = true;
+        toggleRefundAmount();
+    }
+
+    // Initialize active tab on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const activeTab = '@Model.ActiveTab';
+        if (activeTab) {
+            switchTab(activeTab);
+        }
+    });
+</script>

@@ -1,0 +1,11 @@
+﻿namespace RazorpayApi.Models
+{
+    public class OrderItem
+    {
+        public string ItemName { get; set; } = string.Empty;
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public string? Description { get; set; }
+        public decimal TotalPrice => Quantity * UnitPrice;
+    }
+}

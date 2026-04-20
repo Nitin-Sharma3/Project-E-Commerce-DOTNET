@@ -1,0 +1,77 @@
+## Visual Studio
+
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+bin/
+obj/
+
+## Visual Studio cache files
+
+*.cache
+*.log
+
+## ASP.NET Scaffolding
+
+ScaffoldingReadMe.txt
+
+## NuGet
+
+packages/
+*.nupkg
+*.snupkg
+
+## Node.js
+
+node_modules/
+
+## Publish output
+
+publish/
+
+## IIS Express
+
+/.vs/config/applicationhost.config
+
+## Resharper
+
+_ReSharper*/
+*.DotSettings.user
+
+## Rider
+
+.idea/
+
+## VS Code
+
+.vscode/
+
+## OS files
+
+.DS_Store
+Thumbs.db
+
+## SQL Server
+
+*.mdf
+*.ldf
+
+## Logs
+
+*.log
+
+## Temporary files
+
+*.tmp
+*.temp
