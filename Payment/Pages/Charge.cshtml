@@ -1,0 +1,267 @@
+@page
+@model RazorpayApi.Pages.ChargeModel
+@{
+    ViewData["Title"] = "Payment Result";
+}
+
+<div style="width: 100%; max-width: 600px; margin: 0 auto;">
+    <h1 style="text-align: center; margin-bottom: 60px;">Payment Result</h1>
+
+@if (Model.Success)
+{
+    <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(34, 197, 94, 0.1)); border-left: 4px solid #10b981; padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+        <h2 style="color: #10b981; margin-bottom: 16px;">✅ Payment Verified Successfully!</h2>
+        <table style="width: 100%; border-collapse: collapse; margin: 0 auto;">
+            <tr style="border-bottom: 1px solid #111827;">
+                <th style="text-align: left; padding: 12px; color: #9ca3af;">Payment ID</th>
+                <td style="text-align: left; padding: 12px; color: #e5e7eb;"><code style="background: #020617; padding: 6px 12px; border-radius: 6px;">@Model.PaymentId</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #111827;">
+                <th style="text-align: left; padding: 12px; color: #9ca3af;">Order ID</th>
+                <td style="text-align: left; padding: 12px; color: #e5e7eb;"><code style="background: #020617; padding: 6px 12px; border-radius: 6px;">@Model.OrderId</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #111827;">
+                <th style="text-align: left; padding: 12px; color: #9ca3af;">Amount</th>
+                <td style="text-align: left; padding: 12px; color: #e5e7eb;">₹@Model.Amount.ToString("N2")</td>
+            </tr>
+            <tr>
+                <th style="text-align: left; padding: 12px; color: #9ca3af;">Date & Time</th>
+                <td style="text-align: left; padding: 12px; color: #e5e7eb;">@Model.TransactionDate</td>
+            </tr>
+        </table>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: center; align-items: center;">
+            <!-- Download Invoice Button -->
+            <button id="downloadInvoiceBtn" class="btn" onclick="downloadInvoice()" style="background: linear-gradient(135deg, #7c3aed, #6366f1); padding: 12px 24px; height: 44px; display: flex; align-items: center; justify-content: center; white-space: nowrap;">
+                📥 Download Invoice
+            </button>
+        </div>
+    </div>
+
+    <!-- Invoice Preview Modal -->
+    <div id="invoiceModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5);">
+        <div style="background: #0f172a; margin: 5% auto; padding: 24px; border-radius: 12px; width: 90%; max-width: 900px; max-height: 80vh; overflow-y: auto; border: 1px solid #111827;">
+            <span onclick="closeInvoiceModal()" style="color: #9ca3af; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+            <h2 style="margin-bottom: 20px;">Invoice Preview</h2>
+            <div id="invoicePreview" style="border: 1px solid #111827; padding: 20px; margin: 20px 0; background: #020617; border-radius: 8px; min-height: 400px; color: #e5e7eb;">
+                <p>Loading invoice...</p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: center;">
+                <button onclick="downloadInvoiceDirect()" class="btn">Download PDF</button>
+                <button onclick="closeInvoiceModal()" class="btn" style="background: #6b7280;">Close</button>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div style="background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(239, 68, 68, 0.1)); border-left: 4px solid #dc2626; padding: 24px; border-radius: 12px;">
+        <h2 style="color: #dc2626; margin-bottom: 16px;">❌ Payment Verification Failed</h2>
+        <p style="margin-bottom: 20px;">@Model.ErrorMessage</p>
+        <a href="/Payment" class="btn">Try Again</a>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.RefundId))
+{
+    <div style="background: linear-gradient(135deg, rgba(96, 165, 250, 0.1), rgba(59, 130, 246, 0.1)); border-left: 4px solid #3b82f6; padding: 24px; border-radius: 12px; margin-top: 24px;">
+        <h3 style="color: #3b82f6; margin-bottom: 12px;">↩️ Refund Initiated</h3>
+        <p style="color: #e5e7eb;">Refund ID: <code style="background: #020617; padding: 6px 12px; border-radius: 6px;">@Model.RefundId</code></p>
+    </div>
+}
+@section Scripts {
+    <script>
+        const API_BASE = "@(ViewContext.HttpContext.Request.Scheme)://@(ViewContext.HttpContext.Request.Host)/api";
+        const orderId = "@Model.OrderId";
+        const paymentId = "@Model.PaymentId";
+        const amount = @Model.Amount;
+
+        function downloadInvoice() {
+            openInvoiceModal();
+        }
+
+        function openInvoiceModal() {
+            document.getElementById("invoiceModal").style.display = "block";
+            displayInvoicePreview();
+        }
+
+        function displayInvoicePreview() {
+            try {
+                // Generate HTML invoice preview
+                const previewHTML = `
+                    <div style="background: white; color: #000; padding: 40px; font-family: Arial, sans-serif; line-height: 1.6;">
+                        <div style="border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px;">
+                            <h1 style="margin: 0; color: #333; font-size: 32px;">INVOICE</h1>
+                            <p style="margin: 5px 0; color: #666;">Invoice Date: ${new Date().toLocaleDateString()}</p>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 30px;">
+                            <div>
+                                <h3 style="color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 10px;">FROM</h3>
+                                <p style="margin: 5px 0;"><strong>Your Company Name</strong></p>
+                                <p style="margin: 5px 0;">123 Business Street</p>
+                                <p style="margin: 5px 0;">Your City, Your State 123456</p>
+                                <p style="margin: 5px 0;">📧 business@yourcompany.com</p>
+                                <p style="margin: 5px 0;">📱 +91 9999999999</p>
+                                <p style="margin: 5px 0;">GST: 18AABCT1234H1Z0</p>
+                            </div>
+                            <div>
+                                <h3 style="color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 10px;">BILL TO</h3>
+                                <p style="margin: 5px 0;"><strong>Daft Punk</strong></p>
+                                <p style="margin: 5px 0;">Customer Address</p>
+                                <p style="margin: 5px 0;">Your City, Your State 123456</p>
+                                <p style="margin: 5px 0;">📧 customer@merchant.com</p>
+                            </div>
+                        </div>
+
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                            <thead>
+                                <tr style="background: #f0f0f0; border-bottom: 2px solid #333;">
+                                    <th style="text-align: left; padding: 12px; color: #333;">Description</th>
+                                    <th style="text-align: center; padding: 12px; color: #333; width: 100px;">Qty</th>
+                                    <th style="text-align: right; padding: 12px; color: #333; width: 120px;">Unit Price</th>
+                                    <th style="text-align: right; padding: 12px; color: #333; width: 120px;">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid #ddd;">
+                                    <td style="padding: 12px;">Service/Product - Payment for order #${orderId}</td>
+                                    <td style="text-align: center; padding: 12px;">1</td>
+                                    <td style="text-align: right; padding: 12px;">₹${amount.toFixed(2)}</td>
+                                    <td style="text-align: right; padding: 12px;">₹${amount.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+                            <div style="width: 300px;">
+                                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid #ddd;">
+                                    <span style="font-weight: bold;">Subtotal:</span>
+                                    <span>₹${amount.toFixed(2)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                                    <span style="font-weight: bold;">Tax:</span>
+                                    <span>₹0.00</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                                    <span style="font-weight: bold;">Discount:</span>
+                                    <span>₹0.00</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #333; border-bottom: 2px solid #333; font-size: 18px;">
+                                    <span style="font-weight: bold;">Total:</span>
+                                    <span style="font-weight: bold;">₹${amount.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+                            <h4 style="color: #333;">Payment Details</h4>
+                            <p style="margin: 5px 0;"><strong>Payment ID:</strong> ${paymentId}</p>
+                            <p style="margin: 5px 0;"><strong>Order ID:</strong> ${orderId}</p>
+                            <p style="margin: 5px 0;"><strong>Payment Method:</strong> Razorpay</p>
+                            <p style="margin: 5px 0;"><strong>Transaction Date:</strong> ${new Date().toLocaleString()}</p>
+                        </div>
+
+                        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px;">
+                            <p style="margin: 5px 0;">Thank you for your purchase. Please keep this invoice for your records.</p>
+                            <p style="margin: 5px 0;">For queries, contact us at business@yourcompany.com</p>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById("invoicePreview").innerHTML = previewHTML;
+            } catch (err) {
+                console.error("Error displaying invoice preview:", err);
+                document.getElementById("invoicePreview").innerHTML = "<p style='color: #dc2626;'>Error generating preview: " + err.message + "</p>";
+            }
+        }
+
+        function closeInvoiceModal() {
+            document.getElementById("invoiceModal").style.display = "none";
+        }
+
+        async function downloadInvoiceDirect() {
+            try {
+                // Prepare invoice request with stored payment data
+                const invoiceRequest = {
+                    orderId: orderId,
+                    paymentId: paymentId,
+                    items: [
+                        {
+                            itemName: "Service/Product",
+                            quantity: 1,
+                            unitPrice: amount,
+                            description: "Payment for order #" + orderId
+                        }
+                    ],
+                    subtotal: amount,
+                    taxAmount: 0,
+                    discountAmount: 0,
+                    total: amount,
+                    paymentMethod: "Razorpay",
+                    transactionDate: new Date().toISOString(),
+                    currency: "INR",
+                    sellerDetails: {
+                        companyName: "Your Company Name",
+                        address: "123 Business Street",
+                        city: "Your City",
+                        state: "Your State",
+                        postalCode: "123456",
+                        phone: "+91 9999999999",
+                        email: "business@yourcompany.com",
+                        gstNumber: "18AABCT1234H1Z0"
+                    },
+                    customerDetails: {
+                        name: "Daft Punk",
+                        email: "customer@merchant.com",
+                        phone: "",
+                        address: "Customer Address",
+                        city: "Your City",
+                        state: "Your State",
+                        postalCode: "123456"
+                    },
+                    termsAndConditions: "Thank you for your purchase. Please keep this invoice for your records."
+                };
+
+                // Download invoice PDF
+                const response = await fetch(`${API_BASE}/payment/generate-invoice`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(invoiceRequest)
+                });
+
+                if (response.ok) {
+                    // Get the PDF blob and trigger download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `Invoice_${orderId}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+
+                    closeInvoiceModal();
+                    alert("Invoice downloaded successfully!");
+                } else {
+                    const error = await response.json();
+                    alert("Failed to generate invoice: " + (error.error || "Unknown error"));
+                }
+            } catch (err) {
+                console.error("Error downloading invoice:", err);
+                alert("Error downloading invoice: " + err.message);
+            }
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function (event) {
+            const modal = document.getElementById("invoiceModal");
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+}

@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "PaymentApp": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "Payment",
+      "applicationUrl": "https://localhost:5014",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
