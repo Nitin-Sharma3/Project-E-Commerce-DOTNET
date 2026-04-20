@@ -1,0 +1,192 @@
+﻿@model Consumer.MVC.ViewModel.PlaceOrderViewModel
+@{
+    ViewData["Title"] = "Checkout";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+
+<div class="page-header">
+    <div class="container">
+        <h1>Secure <span>Checkout</span></h1>
+    </div>
+</div>
+
+<div class="container" style="padding-bottom: 60px">
+
+    @if (TempData["Error"] != null)
+    {
+        <div style="background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:14px 20px;border-radius:12px;margin-bottom:24px;font-size:.88rem;font-weight:600">
+            ⚠ @TempData["Error"]
+        </div>
+    }
+
+    <!-- Progress steps -->
+    <div class="steps">
+        <div class="step">
+            <div class="step-dot active">1</div>
+            <span class="step-label">Address</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+            <div class="step-dot active">2</div>
+            <span class="step-label">Payment</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+            <div class="step-dot pending">3</div>
+            <span class="step-label">Confirm</span>
+        </div>
+    </div>
+
+    <form asp-action="PlaceOrder" asp-controller="Order" method="post" id="checkoutForm">
+        @Html.AntiForgeryToken()
+        <div class="checkout-grid">
+
+            <!-- Left: Form -->
+            <div>
+                <!-- Address -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <h3>Delivery Address</h3>
+                    </div>
+                    <div class="card-body">
+                        @if (!Model.SavedAddresses.Any())
+                        {
+                            <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:.88rem">
+                                No saved addresses. <a href="/Address/Add" style="color:var(--tertiary);font-weight:700">Add one →</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="addr-options">
+                                @for (int i = 0; i < Model.SavedAddresses.Count; i++)
+                                {
+                                    var addr = Model.SavedAddresses[i];
+                                    <div class="addr-option">
+                                        <input type="radio" name="AddressId" id="addr-@i" value="@i" @(i == 0 ? "checked" : "") />
+                                        <label for="addr-@i">
+                                            <div class="addr-radio-header">
+                                                <span class="addr-name">@addr.FullName</span>
+                                                <span class="addr-type">Home</span>
+                                            </div>
+                                            <div class="addr-text">
+                                                @addr.AddressLine1, @(string.IsNullOrEmpty(addr.AddressLine2) ? "" : addr.AddressLine2 + ", ")@addr.City, @addr.State @addr.PostalCode, @addr.Country
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(addr.PhoneNumber))
+                                            {
+                                                <div style="font-size:.78rem;color:var(--text-muted);margin-top:4px">📞 @addr.PhoneNumber</div>
+                                            }
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                            <div style="margin-top:16px">
+                                <a href="/Address/Add" style="font-size:.82rem;font-weight:700;color:var(--tertiary);text-decoration:none">+ Add new address</a>
+                            </div>
+                        }
+                        <span asp-validation-for="AddressId" class="validation-error"></span>
+                    </div>
+                </div>
+
+                <!-- Payment -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        <h3>Payment Method</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="payment-grid">
+                            @{
+                                var methods = new[] {
+                                                        ("CreditCard","💳","Credit Card"),
+                                                        ("DebitCard","🏧","Debit Card"),
+                                                        ("UPI","📱","UPI"),
+                                                        ("NetBanking","🏦","Net Banking"),
+                                                        ("CashOnDelivery","💵","Cash on Delivery"),
+                                                        ("Wallet","👝","Wallet")
+                                                        };
+                            }
+                            @foreach (var (val, icon, label) in methods)
+                            {
+                                <div class="pay-option">
+                                    <input type="radio" name="PaymentMethod" id="pay-@val" value="@val" @(val == "UPI" ? "checked" : "") />
+                                    <label for="pay-@val">
+                                        <span class="pay-icon">@icon</span>
+                                        <span>@label</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                        <span asp-validation-for="PaymentMethod" class="validation-error"></span>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <h3>Order Notes <span style="color:var(--text-muted);font-weight:400">(optional)</span></h3>
+                    </div>
+                    <div class="card-body">
+                        <textarea class="notes-input" asp-for="Notes" rows="3" placeholder="Any special delivery instructions or notes..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Summary -->
+            <div>
+                <div class="card" style="position:sticky;top:24px">
+                    <div class="card-header"><h3>Order Summary</h3></div>
+                    <div class="card-body">
+                        @if (Model.Cart?.Items != null)
+                        {
+                            @foreach (var item in Model.Cart.Items)
+                            {
+                                <div class="mini-item">
+                                    <img class="mini-img" src="@item.ProductImage" alt="@item.ProductName" onerror="this.src='/images/placeholder.webp'" />
+                                    <div style="flex:1;min-width:0">
+                                        <div class="mini-name" title="@item.ProductName">@item.ProductName</div>
+                                        <div class="mini-qty">Qty: @item.Quantity</div>
+                                    </div>
+                                    <div class="mini-price">₹@item.LineTotal.ToString("N0")</div>
+                                </div>
+                            }
+                        }
+
+                        <div style="margin-top:16px">
+                            <div class="sum-row"><label>Subtotal</label><span class="v">₹@Model.Cart?.Subtotal.ToString("N0")</span></div>
+                            @if (Model.Cart?.Discount > 0)
+                            {
+                                <div class="sum-row" style="color:var(--success)"><label>Discount</label><span class="v">-₹@Model.Cart.Discount.ToString("N0")</span></div>
+                            }
+                            <div class="sum-row"><label>Shipping</label><span class="v">@(Model.Cart?.Shipping == 0 ? "FREE" : "₹" + Model.Cart?.Shipping.ToString("N0"))</span></div>
+                            <div class="sum-row"><label>GST (18%)</label><span class="v">₹@Model.Cart?.Tax.ToString("N0")</span></div>
+                            <div class="sum-row grand"><label>Total</label><span class="v">₹@Model.Cart?.Total.ToString("N0")</span></div>
+                        </div>
+
+                        <div style="margin-top:20px">
+                            <button type="submit" class="place-btn" id="placeBtn">
+                                Place Order · ₹@Model.Cart?.Total.ToString("N0")
+                            </button>
+                            <div class="secure-note">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                Secured by 256-bit SSL encryption
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('checkoutForm').addEventListener('submit', function () {
+        const btn = document.getElementById('placeBtn');
+        btn.disabled = true;
+        btn.textContent = 'Placing order…';
+    });
+</script>

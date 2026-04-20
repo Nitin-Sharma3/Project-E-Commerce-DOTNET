@@ -1,0 +1,225 @@
+﻿@model Consumer.MVC.ViewModel.HomeViewModel
+@{
+    ViewData["Title"] = "Premium Tech Accessories";
+}
+
+<!-- ═══ HERO SECTION ═══ -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-text">
+            <span class="hero-eyebrow">New Collection 2026</span>
+            <h1 class="hero-headline">
+                Gear built for<br /><em>the serious</em><br />creator.
+            </h1>
+            <p class="hero-sub">Premium laptop &amp; mobile accessories. Designed with intent. Built to last.</p>
+            <div class="hero-ctas">
+                <a href="/Products" class="btn-primary">Shop Now</a>
+                <a href="/Products/All" class="btn-secondary">View All</a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-num">50K+</span>
+                    <span class="stat-label">Happy customers</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-num">4.9★</span>
+                    <span class="stat-label">Average rating</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-num">200+</span>
+                    <span class="stat-label">Products</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="hero-stage">
+                <div class="hero-podium">
+                    <img src="@Model.HeroProduct.ImageUrl" alt="@Model.HeroProduct.Name" class="hero-product-img" loading="eager" />
+                </div>
+                <div class="hero-card-float">
+                    <span class="float-badge">@Model.HeroProduct.Badge</span>
+                    <p class="float-name">@Model.HeroProduct.Name</p>
+                    <p class="float-tagline">@Model.HeroProduct.Tagline</p>
+                    <p class="float-price">₹@Model.HeroProduct.Price.ToString("N0")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating tag pills -->
+    <div class="hero-tags">
+        <span class="tag-pill">Laptops</span>
+        <span class="tag-pill active">Mobiles</span>
+        <span class="tag-pill">Cables</span>
+        <span class="tag-pill">Hubs</span>
+        <span class="tag-pill">Cases</span>
+    </div>
+</section>
+
+<!-- ═══ TRUST STRIP ═══ -->
+<section class="trust-strip">
+    <div class="trust-inner">
+        <div class="trust-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            <span>Free shipping over ₹999</span>
+        </div>
+        <div class="trust-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+            <span>2-year warranty</span>
+        </div>
+        <div class="trust-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+            <span>30-day easy returns</span>
+        </div>
+        <div class="trust-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
+            <span>Secure checkout</span>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ LAPTOP ACCESSORIES ═══ -->
+<section class="product-section">
+    <div class="section-header">
+        <div>
+            <span class="section-eyebrow">Category</span>
+            <h2 class="section-title">Laptop Accessories</h2>
+        </div>
+        <a href="/Products/Laptop" class="link-arrow">View all <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg></a>
+    </div>
+    <div class="product-grid">
+        @foreach (var product in Model.FeaturedLaptopAccessories)
+        {
+            <article class="product-card">
+                @if (!string.IsNullOrEmpty(product.Badge))
+                {
+                    <span class="product-badge">@product.Badge</span>
+                }
+                <div class="product-img-wrap">
+                    <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" />
+                    <div class="product-actions">
+                        <button class="action-btn" title="Quick View">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                        </button>
+                        <button class="action-btn" title="Wishlist">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <p class="product-category">@product.Category</p>
+                    <h3 class="product-name">@product.Name</h3>
+                    <div class="product-rating">
+                        <span class="stars">★★★★★</span>
+                        <span class="rating-count">(@product.ReviewCount)</span>
+                    </div>
+                    <div class="product-footer">
+                        <span class="product-price">₹@product.Price.ToString("N0")</span>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+<!-- ═══ EDITORIAL BANNER ═══ -->
+<section class="editorial-banner">
+    <div class="editorial-inner">
+        <div class="editorial-text">
+            <span class="section-eyebrow" style="color: var(--surface);">Featured</span>
+            <h2>The workspace,<br /><em>reimagined.</em></h2>
+            <p>From ultra-slim sleeves to 7-in-1 hubs, every product in our laptop lineup is engineered for the modern professional.</p>
+            <a href="/Products/Laptop" class="btn-primary-light">Shop Laptop Range</a>
+        </div>
+        <div class="editorial-img">
+            <img src="https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=600&q=80" alt="Laptop setup" />
+        </div>
+    </div>
+</section>
+
+<!-- ═══ MOBILE ACCESSORIES ═══ -->
+<section class="product-section">
+    <div class="section-header">
+        <div>
+            <span class="section-eyebrow">Category</span>
+            <h2 class="section-title">Mobile Accessories</h2>
+        </div>
+        <a href="/Products/Mobile" class="link-arrow">View all <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg></a>
+    </div>
+    <div class="product-grid">
+        @foreach (var product in Model.FeaturedMobileAccessories)
+        {
+            <article class="product-card">
+                @if (!string.IsNullOrEmpty(product.Badge))
+                {
+                    <span class="product-badge">@product.Badge</span>
+                }
+                <div class="product-img-wrap">
+                    <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" />
+                    <div class="product-actions">
+                        <button class="action-btn" title="Quick View">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                        </button>
+                        <button class="action-btn" title="Wishlist">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <p class="product-category">@product.Category</p>
+                    <h3 class="product-name">@product.Name</h3>
+                    <div class="product-rating">
+                        <span class="stars">★★★★★</span>
+                        <span class="rating-count">(@product.ReviewCount)</span>
+                    </div>
+                    <div class="product-footer">
+                        <span class="product-price">₹@product.Price.ToString("N0")</span>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testimonials-section">
+    <div class="section-header centered">
+        <span class="section-eyebrow">Reviews</span>
+        <h2 class="section-title">What our customers say</h2>
+    </div>
+    <div class="testimonials-grid">
+        @foreach (var t in Model.Testimonials)
+        {
+            <div class="testimonial-card">
+                <div class="stars-row">@string.Concat(Enumerable.Repeat("★", t.Rating))</div>
+                <p class="testimonial-text">"@t.Text"</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">@t.Author[0]</div>
+                    <div>
+                        <p class="author-name">@t.Author</p>
+                        <p class="author-role">@t.Role</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- ═══ NEWSLETTER ═══ -->
+<section class="newsletter-section">
+    <div class="newsletter-inner">
+        <div class="newsletter-text">
+            <h2>Stay in the loop.</h2>
+            <p>Early access to drops, exclusive offers, and nothing else.</p>
+        </div>
+        <div class="newsletter-form">
+            <input type="email" placeholder="your@email.com" class="newsletter-input" />
+            <button class="btn-primary">Subscribe</button>
+        </div>
+    </div>
+</section>
