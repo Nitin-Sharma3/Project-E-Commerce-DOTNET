@@ -1,0 +1,16 @@
+﻿@model ECommerceWeb.Models.RegisterModel
+
+<h2>Register</h2>
+
+<form method="post">
+    <input asp-for="Name" placeholder="Name" class="form-control" /><br />
+    <input asp-for="Email" placeholder="Email" class="form-control" /><br />
+    <input asp-for="Password" type="password" placeholder="Password" class="form-control" /><br />
+    <input asp-for="Phone" placeholder="Phone" class="form-control" /><br />
+    <button class="btn btn-primary">Register</button>
+</form>
+
+@if (ViewBag.Message != null)
+{
+    <p>@ViewBag.Message</p>
+}
