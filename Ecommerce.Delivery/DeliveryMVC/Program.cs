@@ -1,0 +1,54 @@
+using DeliveryMVC.Services;
+using System.Text.Json;
+
+namespace DeliveryMVC
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            builder.Services.AddControllersWithViews()
+                .AddJsonOptions(options =>
+                {
+                    // Fix camelCase deserialization from API
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                });
+
+            builder.Services.AddScoped<DeliveryApiService>();
+
+            builder.Services.AddHttpClient("DeliveryApi", c =>
+            {
+                c.BaseAddress = new Uri(builder.Configuration["Services:DeliveryApi"]
+                               ?? "http://localhost:5016/");
+                c.DefaultRequestHeaders.Add("Accept", "application/json");
+            });
+
+            var app = builder.Build();
+
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseExceptionHandler("/Home/Error");
+                app.UseHsts();
+            }
+
+            app.UseHttpsRedirection();
+            app.UseStaticFiles();
+            app.UseRouting();
+            app.UseAuthorization();
+
+            // ✅ Tracking route MUST be before default route
+            app.MapControllerRoute(
+                name: "tracking",
+                pattern: "Delivery/Tracking/{trackingId}",
+                defaults: new { controller = "Delivery", action = "Tracking" });
+
+            app.MapControllerRoute(
+                name: "default",
+                pattern: "{controller=Delivery}/{action=Index}/{id?}");
+
+            app.Run();
+        }
+    }
+}

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DeliveryMVC/DeliveryMVC.csproj" Id="d8bb4f51-5b7d-417a-b685-cd1791c81612" />
+  <Project Path="DeliveryService/DeliveryService.csproj" />
+</Solution>
