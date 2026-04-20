@@ -1,0 +1,1307 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+    :root {
+        --bg: #0d0d14;
+        --bg-2: #12121c;
+        --surface: #181825;
+        --surface-2: #1f1f2e;
+        --surface-3: #272738;
+        --border: rgba(255,255,255,0.07);
+        --border-hover: rgba(255,255,255,0.14);
+        --text-primary: #eeeef5;
+        --text-secondary: #9999bb;
+        --text-muted: #55556e;
+        /* Gradients */
+        --grad-purple: linear-gradient(135deg, #7c6af7 0%, #a78bfa 100%);
+        --grad-teal: linear-gradient(135deg, #2de3a1 0%, #22d3ee 100%);
+        --grad-amber: linear-gradient(135deg, #f5a623 0%, #fb923c 100%);
+        --grad-red: linear-gradient(135deg, #f05454 0%, #fb7185 100%);
+        --accent: #8b7cf8;
+        --accent-light: rgba(139,124,248,0.18);
+        --accent-glow: rgba(139,124,248,0.25);
+        --teal: #2de3a1;
+        --teal-light: rgba(45,227,161,0.14);
+        --amber: #f5a623;
+        --amber-light: rgba(245,166,35,0.14);
+        --danger: #f05454;
+        --danger-light: rgba(240,84,84,0.14);
+        --font-body: 'Plus Jakarta Sans', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+        --radius-sm: 10px;
+        --radius-md: 14px;
+        --radius-lg: 18px;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body, html {
+        background: var(--bg) !important;
+        color: var(--text-primary) !important;
+        font-family: var(--font-body);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── AMBIENT BACKGROUND ── */
+    .dash-wrap {
+        min-height: 100vh;
+        padding: 2.5rem 2rem 5rem;
+        position: relative;
+        overflow-x: hidden;
+        background: var(--bg);
+    }
+
+    .ambient-1 {
+        position: fixed;
+        top: -180px;
+        left: -180px;
+        width: 520px;
+        height: 520px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(139,124,248,0.09) 0%, transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .ambient-2 {
+        position: fixed;
+        bottom: -200px;
+        right: -120px;
+        width: 480px;
+        height: 480px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(45,227,161,0.07) 0%, transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .ambient-3 {
+        position: fixed;
+        top: 40%;
+        left: 55%;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(245,166,35,0.04) 0%, transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .dash-inner {
+        position: relative;
+        z-index: 1;
+        max-width: 1220px;
+        margin: 0 auto;
+    }
+
+    /* ── HEADER ── */
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 2.25rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+        animation: fadeUp 0.5s ease both;
+    }
+
+    .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 7px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .eyebrow::before {
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 1px;
+            background: var(--accent);
+            opacity: 0.6;
+        }
+
+    .dash-title {
+        font-size: clamp(24px, 3vw, 36px);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        background: linear-gradient(135deg, #eeeef5 0%, #9999bb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .dash-date {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 7px;
+        letter-spacing: 0.04em;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .btn {
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 18px;
+        border-radius: var(--radius-sm);
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background: var(--grad-purple);
+        color: #fff;
+        box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 28px rgba(139,124,248,0.4);
+            transform: translateY(-1px);
+            color: #fff;
+        }
+
+    .btn-ghost {
+        background: var(--surface-2);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+    }
+
+        .btn-ghost:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+        }
+
+    /* ── KPI GRID ── */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 1.75rem;
+    }
+
+    @@media (max-width: 768px) {
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .kpi-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem 1.6rem;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        animation: fadeUp 0.5s ease both;
+    }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+        }
+
+        .kpi-card:nth-child(1) {
+            animation-delay: 0.07s;
+        }
+
+        .kpi-card:nth-child(2) {
+            animation-delay: 0.14s;
+        }
+
+        .kpi-card:nth-child(3) {
+            animation-delay: 0.21s;
+        }
+
+        /* Top bar gradient per card */
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .kpi-card:hover::before {
+            opacity: 1;
+        }
+
+        .kpi-card.k-purple::before {
+            background: var(--grad-purple);
+        }
+
+        .kpi-card.k-teal::before {
+            background: var(--grad-teal);
+        }
+
+        .kpi-card.k-amber::before {
+            background: var(--grad-amber);
+        }
+
+    /* Watermark emoji */
+    .kpi-bg-icon {
+        position: absolute;
+        right: -6px;
+        bottom: -8px;
+        font-size: 72px;
+        opacity: 0.045;
+        pointer-events: none;
+        line-height: 1;
+        filter: grayscale(1) brightness(1.5);
+    }
+
+    .kpi-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+
+    .kpi-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .kpi-icon.purple {
+            background: var(--accent-light);
+        }
+
+        .kpi-icon.teal {
+            background: var(--teal-light);
+        }
+
+        .kpi-icon.amber {
+            background: var(--amber-light);
+        }
+
+    .kpi-val {
+        font-size: 40px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 5px;
+    }
+
+        .kpi-val.purple {
+            background: var(--grad-purple);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .kpi-val.teal {
+            background: var(--grad-teal);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .kpi-val.amber {
+            background: var(--grad-amber);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+    .kpi-meta {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        letter-spacing: 0.03em;
+    }
+
+    /* ── MAIN GRID ── */
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 14px;
+        align-items: start;
+    }
+
+    @@media (max-width: 1020px) {
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ── PANEL ── */
+    .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        animation: fadeUp 0.5s ease 0.28s both;
+    }
+
+    .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.1rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--text-secondary);
+    }
+
+    .badge {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 3px 9px;
+        border-radius: 5px;
+        background: var(--surface-3);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        padding: 0.85rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .chip {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        padding: 4px 11px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+        .chip:hover {
+            background: var(--surface-3);
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+        }
+
+        .chip.active {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: rgba(139,124,248,0.35);
+        }
+
+    /* ── TABLE ── */
+    .table-scroll {
+        overflow-x: auto;
+    }
+
+    .inv-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+        .inv-table th {
+            font-family: var(--font-mono);
+            font-size: 9.5px;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 9px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-weight: 400;
+        }
+
+        .inv-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+
+        .inv-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .inv-table tbody tr {
+            transition: background 0.15s;
+        }
+
+            .inv-table tbody tr:hover td {
+                background: var(--surface-2);
+            }
+
+    .prod-name {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-primary);
+    }
+
+    .prod-desc {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    .price {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-weight: 500;
+        background: var(--grad-teal);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .stock-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .stock-track {
+        width: 56px;
+        height: 3px;
+        background: var(--surface-3);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .stock-fill {
+        height: 3px;
+        border-radius: 2px;
+        transition: width 0.6s ease;
+    }
+
+    .stock-num {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: var(--text-secondary);
+        min-width: 28px;
+    }
+
+    .pill {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .pill::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+    .pill-ok {
+        background: var(--teal-light);
+        color: var(--teal);
+        border: 1px solid rgba(45,227,161,0.22);
+    }
+
+        .pill-ok::before {
+            background: var(--teal);
+        }
+
+    .pill-low {
+        background: var(--amber-light);
+        color: var(--amber);
+        border: 1px solid rgba(245,166,35,0.22);
+    }
+
+        .pill-low::before {
+            background: var(--amber);
+        }
+
+    .pill-out {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 1px solid rgba(240,84,84,0.22);
+    }
+
+        .pill-out::before {
+            background: var(--danger);
+        }
+
+    .img-dots {
+        display: flex;
+        gap: 3px;
+    }
+
+    .img-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--surface-3);
+        border: 1px solid var(--border-hover);
+    }
+
+        .img-dot.on {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+    .empty-row td {
+        text-align: center;
+        padding: 2.5rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 12px;
+    }
+
+    .search-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 9px;
+        pointer-events: none;
+    }
+
+    .search-input {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px 6px 32px;
+        color: var(--text-primary);
+        outline: none;
+        width: 190px;
+        transition: border-color 0.2s;
+    }
+
+        .search-input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    /* ── QUICK ACTIONS ── */
+    .qa-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 1.1rem;
+    }
+
+    .qa-tile {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 1rem 1rem 0.9rem;
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .qa-tile::after {
+            content: '→';
+            position: absolute;
+            top: 10px;
+            right: 11px;
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .qa-tile:hover {
+            border-color: var(--border-hover);
+            background: var(--surface-3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        }
+
+            .qa-tile:hover::after {
+                color: var(--text-secondary);
+                right: 8px;
+            }
+
+    .qa-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .qa-name {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+    }
+
+    .qa-hint {
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        color: var(--text-muted);
+        margin-top: -5px;
+    }
+
+    /* ── ALERTS ── */
+    .alert-list {
+        padding: 4px 0;
+    }
+
+    .alert-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        padding: 11px 1.4rem;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+    }
+
+        .alert-row:hover {
+            background: var(--surface-2);
+        }
+
+        .alert-row:last-child {
+            border-bottom: none;
+        }
+
+    .alert-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 3px;
+    }
+
+    .alert-name {
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .alert-sub {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    /* ── SPARKLINE ── */
+    .spark-wrap {
+        padding: 1rem 1.4rem 1.2rem;
+    }
+
+    .spark-total {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.03em;
+    }
+
+    .spark-sub {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--teal);
+    }
+
+    .spark-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 46px;
+        margin: 10px 0 6px;
+    }
+
+    .s-bar {
+        flex: 1;
+        border-radius: 3px 3px 0 0;
+        background: var(--grad-purple);
+        opacity: 0.28;
+        transition: opacity 0.15s;
+        cursor: pointer;
+    }
+
+        .s-bar:hover {
+            opacity: 1;
+        }
+
+        .s-bar.peak {
+            opacity: 0.8;
+        }
+
+    .spark-days {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .spark-day {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--text-muted);
+        flex: 1;
+        text-align: center;
+    }
+
+    .stats-row {
+        display: flex;
+        border-top: 1px solid var(--border);
+    }
+
+    .stat-cell {
+        flex: 1;
+        padding: 0.9rem 1.1rem;
+        border-right: 1px solid var(--border);
+    }
+
+        .stat-cell:last-child {
+            border-right: none;
+        }
+
+    .stat-val {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+    }
+
+    .stat-lbl {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: 3px;
+    }
+
+    /* ── TOAST ── */
+    #toast-zone {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+    }
+
+    .toast {
+        background: var(--surface-2);
+        border: 1px solid var(--border-hover);
+        border-left: 3px solid;
+        border-radius: var(--radius-sm);
+        padding: 11px 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 270px;
+        max-width: 330px;
+        pointer-events: all;
+        animation: toastIn 0.3s cubic-bezier(.2,1,.4,1) both;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    }
+
+    @@keyframes toastIn {
+        from {
+            opacity: 0;
+            transform: translateX(16px) scale(0.97);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    .toast.warn {
+        border-left-color: var(--amber);
+    }
+
+    .toast.error {
+        border-left-color: var(--danger);
+    }
+
+    .toast.info {
+        border-left-color: var(--accent);
+    }
+
+    .t-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    .t-body {
+        flex: 1;
+    }
+
+    .t-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .t-msg {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 2px;
+        line-height: 1.5;
+    }
+
+    .t-close {
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+        transition: color 0.15s;
+    }
+
+        .t-close:hover {
+            color: var(--text-primary);
+        }
+
+    @@keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+</style>
+
+<div id="toast-zone"></div>
+
+<div class="dash-wrap">
+    <div class="ambient-1"></div>
+    <div class="ambient-2"></div>
+    <div class="ambient-3"></div>
+
+    <div class="dash-inner">
+
+        <!-- HEADER -->
+        <div class="dash-header">
+            <div>
+                <div class="eyebrow">Seller Portal — Store Overview</div>
+                <div class="dash-title">Dashboard Studio</div>
+                <div class="dash-date" id="ts"></div>
+            </div>
+            <div class="header-actions">
+                <a href="/Product/Inventory" class="btn btn-ghost">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2" />
+                        <rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2" />
+                        <rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2" />
+                        <rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2" />
+                    </svg>
+                    Inventory
+                </a>
+                <a href="/Product/Add" class="btn btn-primary">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <line x1="6.5" y1="1" x2="6.5" y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                        <line x1="1" y1="6.5" x2="12" y2="6.5" stroke="white" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    Add Product
+                </a>
+            </div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="kpi-grid">
+            <div class="kpi-card k-purple">
+                <div class="kpi-bg-icon">📦</div>
+                <div class="kpi-top">
+                    <div class="kpi-label">Total Products</div>
+                    <div class="kpi-icon purple">
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                            <rect x="1" y="5" width="14" height="9" rx="1.5" stroke="#8b7cf8" stroke-width="1.3" />
+                            <path d="M5 5V4a3 3 0 016 0v1" stroke="#8b7cf8" stroke-width="1.3" fill="none" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="kpi-val purple">@ViewBag.TotalProducts</div>
+                <div class="kpi-meta">active listings</div>
+            </div>
+
+            <div class="kpi-card k-teal">
+                <div class="kpi-bg-icon">📊</div>
+                <div class="kpi-top">
+                    <div class="kpi-label">Total Stock</div>
+                    <div class="kpi-icon teal">
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                            <rect x="1" y="7" width="3" height="8" rx="1" fill="#2de3a1" opacity=".45" />
+                            <rect x="5.5" y="4" width="3" height="11" rx="1" fill="#2de3a1" opacity=".65" />
+                            <rect x="10" y="1" width="3" height="14" rx="1" fill="#2de3a1" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="kpi-val teal">@ViewBag.TotalStock</div>
+                <div class="kpi-meta">units available</div>
+            </div>
+
+            <div class="kpi-card k-amber">
+                <div class="kpi-bg-icon">⚠️</div>
+                <div class="kpi-top">
+                    <div class="kpi-label">Low Stock</div>
+                    <div class="kpi-icon amber">
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 2.5L13.5 12.5H2.5L8 2.5Z" stroke="#f5a623" stroke-width="1.3" />
+                            <line x1="8" y1="6.5" x2="8" y2="9.5" stroke="#f5a623" stroke-width="1.3" stroke-linecap="round" />
+                            <circle cx="8" cy="11.2" r="0.7" fill="#f5a623" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="kpi-val amber">@ViewBag.LowStock</div>
+                <div class="kpi-meta">need restocking</div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <!-- MAIN CONTENT -->
+        <div class="main-grid">
+
+            <!-- LEFT SIDE -->
+            <div>
+
+                <!-- QUICK ACTIONS (NOW NORMAL DIV ON TOP) -->
+                <div class="panel" style="margin-bottom:14px">
+                    <div class="panel-head">
+                        <div class="panel-title">Quick Actions</div>
+                    </div>
+
+                    <div class="qa-grid">
+
+                        <a href="/Product/Add" class="qa-tile">
+                            <div class="qa-icon" style="background:var(--accent-light)">
+                                +
+                            </div>
+                            <div class="qa-name">Add Product</div>
+                            <div class="qa-hint">Create new listing</div>
+                        </a>
+
+                        <a href="/Product/Inventory" class="qa-tile">
+                            <div class="qa-icon" style="background:var(--teal-light)">
+                                📦
+                            </div>
+                            <div class="qa-name">Inventory</div>
+                            <div class="qa-hint">View all stock</div>
+                        </a>
+
+                        <a href="/Product/Export" class="qa-tile">
+                            <div class="qa-icon" style="background:var(--amber-light)">
+                                ⬇
+                            </div>
+                            <div class="qa-name">Export</div>
+                            <div class="qa-hint">Download CSV</div>
+                        </a>
+
+                        <a href="/Product/Analytics" class="qa-tile">
+                            <div class="qa-icon" style="background:var(--danger-light)">
+                                📈
+                            </div>
+                            <div class="qa-name">Analytics</div>
+                            <div class="qa-hint">Sales trends</div>
+                        </a>
+
+                    </div>
+                </div>
+
+
+                <!-- INVENTORY TABLE -->
+                <div class="panel">
+
+                    <div class="panel-head">
+                        <div class="panel-title">Live Inventory</div>
+
+                        <div style="display:flex;gap:8px;align-items:center">
+
+                            <div class="search-wrap">
+                                <input type="text"
+                                       id="searchInput"
+                                       class="search-input"
+                                       placeholder="Search products..."
+                                       oninput="filterTable()">
+                            </div>
+
+                            <div class="badge" id="rowCount">— items</div>
+
+                        </div>
+                    </div>
+
+                    <div class="filter-bar">
+                        <button class="chip active" onclick="setFilter('all',this)">All</button>
+                        <button class="chip" onclick="setFilter('ok',this)">In stock</button>
+                        <button class="chip" onclick="setFilter('low',this)">Low stock</button>
+                        <button class="chip" onclick="setFilter('out',this)">Out of stock</button>
+                    </div>
+
+                    <div class="table-scroll">
+
+                        <table class="inv-table">
+
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Images</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="prodBody">
+
+                                @if (ViewBag.Products != null)
+                                {
+                                    foreach (var p in ViewBag.Products)
+                                    {
+                                        var imgCount = new[] { p.ImageUrl1, p.ImageUrl2, p.ImageUrl3 }.Count(x => x != null);
+
+                                        var stockClass = p.Stock == 0 ? "out" : (p.Stock <= 10 ? "low" : "ok");
+
+                                        var stockLabel = p.Stock == 0
+                                        ? "Out of stock"
+                                        : (p.Stock <= 10 ? "Low stock" : "In stock");
+
+                                        var pillClass = "pill-" + stockClass;
+
+                                        <tr data-status="@stockClass">
+
+                                            <td>
+                                                <div class="prod-name">@p.Name</div>
+                                                <div class="prod-desc">@(p.Description ?? "No description")</div>
+                                            </td>
+
+                                            <td>
+                                                <span class="price">₹@p.Price</span>
+                                            </td>
+
+                                            <td>
+                                                <span class="stock-num">@p.Stock</span>
+                                            </td>
+
+                                            <td>
+                                                <span class="pill @pillClass">@stockLabel</span>
+                                            </td>
+
+                                            <td>
+                                                <div class="img-dots">
+                                                    <div class="img-dot @(imgCount >= 1 ? "on" : "")"></div>
+                                                    <div class="img-dot @(imgCount >= 2 ? "on" : "")"></div>
+                                                    <div class="img-dot @(imgCount >= 3 ? "on" : "")"></div>
+                                                </div>
+                                            </td>
+
+                                            <td>
+                                                <a href="/Product/Edit/@p.Id"
+                                                   class="btn btn-ghost"
+                                                   style="padding:5px 12px;font-size:11px">
+                                                    Edit
+                                                </a>
+                                            </td>
+
+                                        </tr>
+                                    }
+                                }
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        /* Timestamp */
+        const ts = document.getElementById('ts');
+        if (ts) ts.textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+        /* Filter */
+        let activeFilter = 'all';
+        window.setFilter = function(f, el) {
+            activeFilter = f;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            filterTable();
+        };
+        window.filterTable = function() {
+            const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+            const rows = document.querySelectorAll('#prodBody tr[data-status]');
+            let vis = 0;
+            rows.forEach(row => {
+                const show = (activeFilter === 'all' || row.dataset.status === activeFilter)
+                          && (!q || row.textContent.toLowerCase().includes(q));
+                row.style.display = show ? '' : 'none';
+                if (show) vis++;
+            });
+            const rc = document.getElementById('rowCount');
+            if (rc) rc.textContent = vis + ' item' + (vis !== 1 ? 's' : '');
+        };
+        (function initCount() {
+            const rows = document.querySelectorAll('#prodBody tr[data-status]');
+            const rc = document.getElementById('rowCount');
+            if (rc) rc.textContent = rows.length + ' item' + (rows.length !== 1 ? 's' : '');
+        })();
+
+        /* Alerts */
+        (function buildAlerts() {
+            const rows = document.querySelectorAll('#prodBody tr[data-status]');
+            const list = document.getElementById('alertList');
+            const badge = document.getElementById('alertBadge');
+            const alerts = [];
+            rows.forEach(row => {
+                const s = row.dataset.status;
+                if (s === 'out' || s === 'low') {
+                    alerts.push({
+                        name: row.querySelector('.prod-name')?.textContent || '',
+                        stock: parseInt(row.querySelector('.stock-num')?.textContent || '0'),
+                        status: s
+                    });
+                }
+            });
+            if (badge) badge.textContent = alerts.length + ' alert' + (alerts.length !== 1 ? 's' : '');
+            if (alerts.length > 0 && list) {
+                list.innerHTML = alerts.map(a => `
+                    <div class="alert-row">
+                        <div class="alert-dot" style="background:${a.status === 'out' ? 'var(--danger)' : 'var(--amber)'}"></div>
+                        <div>
+                            <div class="alert-name">${a.name}</div>
+                            <div class="alert-sub">${a.status === 'out' ? 'Out of stock' : a.stock + ' units remaining'}</div>
+                        </div>
+                    </div>`).join('');
+            }
+            const outItems = alerts.filter(a => a.status === 'out');
+            const lowItems = alerts.filter(a => a.status === 'low');
+            if (outItems.length) setTimeout(() => showToast('error', 'Out of Stock', outItems.map(a => a.name).join(', ')), 700);
+            if (lowItems.length) setTimeout(() => showToast('warn', 'Low Stock Warning', lowItems.length + ' product' + (lowItems.length > 1 ? 's are' : ' is') + ' running low'), 1400);
+        })();
+
+        /* Sparkline */
+        (function buildSpark() {
+            const data = [9, 14, 7, 21, 17, 11, 6];
+            const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+            const max = Math.max(...data);
+            const total = data.reduce((a,b) => a+b, 0);
+            const avg = Math.round(total / data.length);
+            const peakIdx = data.indexOf(max);
+
+            const bars = document.getElementById('sparkBars');
+            const labelsEl = document.getElementById('sparkDays');
+            const totalEl = document.getElementById('totalWeekSales');
+            const peakEl = document.getElementById('peakDay');
+            const avgEl = document.getElementById('avgDay');
+
+            if (bars) bars.innerHTML = data.map((v, i) => {
+                const h = Math.round((v / max) * 100);
+                return `<div class="s-bar${i === peakIdx ? ' peak' : ''}" style="height:${h}%" title="${days[i]}: ${v} units"></div>`;
+            }).join('');
+            if (labelsEl) labelsEl.innerHTML = days.map(d => `<span class="spark-day">${d}</span>`).join('');
+            if (totalEl) totalEl.textContent = total;
+            if (peakEl)  peakEl.textContent  = days[peakIdx];
+            if (avgEl)   avgEl.textContent   = avg;
+        })();
+
+        /* Toast */
+        function showToast(type, title, msg) {
+            const zone = document.getElementById('toast-zone');
+            if (!zone) return;
+            const icons = {
+                warn:  `<svg class="t-icon" viewBox="0 0 16 16" fill="none"><path d="M8 2.5L13.5 12.5H2.5L8 2.5Z" stroke="#f5a623" stroke-width="1.2"/><line x1="8" y1="6" x2="8" y2="9.5" stroke="#f5a623" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.2" r="0.7" fill="#f5a623"/></svg>`,
+                error: `<svg class="t-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#f05454" stroke-width="1.2"/><line x1="6" y1="6" x2="10" y2="10" stroke="#f05454" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="6" x2="6" y2="10" stroke="#f05454" stroke-width="1.2" stroke-linecap="round"/></svg>`,
+                info:  `<svg class="t-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#8b7cf8" stroke-width="1.2"/><line x1="8" y1="7" x2="8" y2="11" stroke="#8b7cf8" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="5.2" r="0.7" fill="#8b7cf8"/></svg>`,
+            };
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.innerHTML = `${icons[type]||''}<div class="t-body"><div class="t-title">${title}</div><div class="t-msg">${msg}</div></div><span class="t-close" onclick="this.parentElement.remove()">×</span>`;
+            zone.appendChild(t);
+            setTimeout(() => { if (t.parentElement) t.remove(); }, 5500);
+        }
+    })();
+</script>
