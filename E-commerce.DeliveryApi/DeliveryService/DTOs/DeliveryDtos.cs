@@ -104,5 +104,28 @@ namespace DeliveryService.DTOs
         bool IsCurrent
     );
 
+    public record DeliveryMapPointDto(
+    int DeliveryId,
+    int OrderId,
+    string TrackingId,
+    string RecipientName,
+    string FullAddress,
+    string Status,
+    double Latitude,
+    double Longitude,
+    DateTime EstimatedDelivery,
+    bool IsOverdue,
+    string? AgentName,
+    List<RoutePointDto> RouteHistory
+);
+
+    public record RoutePointDto(
+        string Status,
+        double Latitude,
+        double Longitude,
+        DateTime Timestamp,
+        string? Location
+    );
+
     public record ApiResponse<T>(bool Success, string Message, T? Data, string? Error = null);
 }

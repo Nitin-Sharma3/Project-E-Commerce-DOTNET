@@ -95,5 +95,12 @@ namespace DeliveryService.Controller
                 return UnprocessableEntity(new ApiResponse<object>(false, ex.Message, null));
             }
         }
+
+        [HttpGet("map/all")]
+        public async Task<IActionResult> GetAllForMap()
+        {
+            var data = await svc.GetAllForMapAsync();
+            return Ok(new ApiResponse<object>(true, "Map data fetched", data));
+        }
     }
 }

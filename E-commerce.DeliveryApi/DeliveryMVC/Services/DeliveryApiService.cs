@@ -215,5 +215,22 @@ namespace DeliveryMVC.Services
                 return false;
             }
         }
+
+        public async Task<List<DeliveryMapPointViewModel>> GetAllForMapAsync()
+        {
+            try
+            {
+                var resp = await Client().GetAsync("api/delivery/map/all");
+                if (!resp.IsSuccessStatusCode) return [];
+                var json = await resp.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<ApiResponse<List<DeliveryMapPointViewModel>>>(json, JsonOptions);
+                return result?.Data ?? [];
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "GetAllForMap failed");
+                return [];
+            }
+        }
     }
 }

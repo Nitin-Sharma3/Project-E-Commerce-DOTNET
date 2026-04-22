@@ -39,6 +39,12 @@ namespace DeliveryMVC
             app.UseAuthorization();
 
             // ✅ Tracking route MUST be before default route
+
+            app.MapControllerRoute(
+                name: "livemap",
+                pattern: "Delivery/LiveMap",
+                defaults: new { controller = "Delivery", action = "LiveMap" });
+
             app.MapControllerRoute(
                 name: "tracking",
                 pattern: "Delivery/Tracking/{trackingId}",

@@ -189,5 +189,36 @@ namespace DeliveryService.Services
                 timeline
             );
         }
+        // ── All On Map ──────────────────────────────────────────────────────────────────
+        public async Task<IEnumerable<DeliveryMapPointDto>> GetAllForMapAsync()
+        {
+            var deliveries = await repo.GetAllAsync();
+
+            return deliveries
+                .Where(d => d.CurrentLatitude.HasValue && d.CurrentLongitude.HasValue)
+                .Select(d => new DeliveryMapPointDto(
+                    d.Id,
+                    d.OrderId,
+                    d.TrackingId,
+                    d.RecipientName,
+                    $"{d.AddressLine1}, {d.City}, {d.State}",
+                    d.Status.ToString(),
+                    d.CurrentLatitude!.Value,
+                    d.CurrentLongitude!.Value,
+                    d.EstimatedDeliveryDate,
+                    d.EstimatedDeliveryDate < DateTime.UtcNow && d.Status != DeliveryStatus.Delivered,
+                    d.DeliveryAgentName,
+                    d.StatusHistory
+                        .Where(h => h.Latitude.HasValue && h.Longitude.HasValue)
+                        .OrderBy(h => h.Timestamp)
+                        .Select(h => new RoutePointDto(
+                            h.Status.ToString(),
+                            h.Latitude!.Value,
+                            h.Longitude!.Value,
+                            h.Timestamp,
+                            h.Location))
+                        .ToList()
+                ));
+        }
     }
 }

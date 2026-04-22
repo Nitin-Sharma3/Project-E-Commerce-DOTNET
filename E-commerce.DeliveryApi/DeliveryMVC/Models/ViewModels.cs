@@ -74,4 +74,29 @@
         public string Message { get; set; } = "";
         public T? Data { get; set; }
     }
+
+    public class DeliveryMapPointViewModel
+    {
+        public int DeliveryId { get; set; }
+        public int OrderId { get; set; }
+        public string TrackingId { get; set; } = "";
+        public string RecipientName { get; set; } = "";
+        public string FullAddress { get; set; } = "";
+        public string Status { get; set; } = "";
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime EstimatedDelivery { get; set; }
+        public bool IsOverdue { get; set; }
+        public string? AgentName { get; set; }
+        public List<RoutePointViewModel> RouteHistory { get; set; } = [];
+    }
+
+    public class RoutePointViewModel
+    {
+        public string Status { get; set; } = "";
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string? Location { get; set; }
+    }
 }

@@ -11,5 +11,6 @@ namespace DeliveryService.Services
         Task<DeliveryResponseDto> CreateAsync(CreateDeliveryDto dto);
         Task<DeliveryResponseDto> UpdateStatusAsync(UpdateDeliveryStatusDto dto);
         Task<DeliveryResponseDto> MarkDeliveredAsync(MarkDeliveredDto dto);
+        Task<IEnumerable<DeliveryMapPointDto>> GetAllForMapAsync();
     }
 }

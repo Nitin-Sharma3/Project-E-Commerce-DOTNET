@@ -100,5 +100,10 @@ namespace DeliveryMVC.Controllers
                 : "Could not mark as delivered. Must be OutForDelivery first.";
             return RedirectToAction(nameof(Details), new { id = deliveryId });
         }
+        public async Task<IActionResult> LiveMap()
+        {
+            var points = await api.GetAllForMapAsync();
+            return View(points);
+        }
     }
 }

@@ -1,0 +1,546 @@
+﻿@model List<DeliveryMVC.Models.DeliveryMapPointViewModel>
+@{
+    Layout = null;
+    string StatusColor(string s) => s switch {
+        "Pending"        => "#94a3b8",
+        "Packed"         => "#0ea5e9",
+        "Shipped"        => "#2563eb",
+        "OutForDelivery" => "#f59e0b",
+        "Delivered"      => "#22c55e",
+        "Failed"         => "#ef4444",
+        _                => "#94a3b8"
+    };
+    string StatusEmoji(string s) => s switch {
+        "Pending"        => "⏳",
+        "Packed"         => "📦",
+        "Shipped"        => "🚛",
+        "OutForDelivery" => "🚴",
+        "Delivered"      => "✅",
+        "Failed"         => "❌",
+        _                => "📍"
+    };
+    string StatusLabel(string s) => s == "OutForDelivery" ? "Out for Delivery" : s;
+
+    var statuses = new[] { "All", "Pending", "Packed", "Shipped", "OutForDelivery", "Delivered", "Failed" };
+    var centerLat = Model.Any() ? Model.Average(m => m.Latitude) : 20.5937;
+    var centerLng = Model.Any() ? Model.Average(m => m.Longitude) : 78.9629;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Live Delivery Map</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; overflow: hidden; }
+        .shell { display: flex; height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 380px; min-width: 320px; background: #0f172a;
+            border-right: 1px solid rgba(255,255,255,.07);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .sidebar-head {
+            padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.07);
+            flex-shrink: 0;
+        }
+        .brand { display: flex; align-items: center; gap: .6rem; margin-bottom: .75rem; }
+        .brand-icon { width: 32px; height: 32px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .brand span { font-weight: 700; font-size: .95rem; color: #f1f5f9; }
+        .back-btn { color: #475569; font-size: .78rem; text-decoration: none; display: flex; align-items: center; gap: .35rem; }
+        .back-btn:hover { color: #94a3b8; }
+
+        /* Stats row */
+        .stats-row { display: flex; gap: .5rem; padding: .75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; flex-wrap: wrap; }
+        .stat-pill { display: flex; align-items: center; gap: .3rem; background: rgba(255,255,255,.05); border-radius: 6px; padding: .25rem .6rem; font-size: .72rem; color: #94a3b8; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+        .stat-pill:hover { border-color: rgba(255,255,255,.1); }
+        .stat-pill.active { border-color: currentColor; }
+        .stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .stat-count { font-weight: 700; font-size: .8rem; }
+
+        /* Search */
+        .search-wrap { padding: .75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
+        .search-input { width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: .45rem .75rem; color: #e2e8f0; font-size: .82rem; font-family: inherit; outline: none; }
+        .search-input::placeholder { color: #475569; }
+        .search-input:focus { border-color: rgba(37,99,235,.4); background: rgba(255,255,255,.07); }
+
+        /* Delivery list */
+        .delivery-list { flex: 1; overflow-y: auto; padding: .5rem; }
+        .delivery-list::-webkit-scrollbar { width: 3px; }
+        .delivery-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+        .delivery-card {
+            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+            border-radius: 10px; padding: .75rem; margin-bottom: .4rem;
+            cursor: pointer; transition: all .15s;
+        }
+        .delivery-card:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
+        .delivery-card.selected { border-color: #2563eb; background: rgba(37,99,235,.1); }
+        .delivery-card.hidden { display: none; }
+
+        .dc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .4rem; }
+        .dc-name { font-size: .82rem; font-weight: 600; color: #e2e8f0; }
+        .dc-status { font-size: .68rem; font-weight: 600; padding: .15rem .5rem; border-radius: 5px; }
+        .dc-tid { font-family: monospace; font-size: .7rem; color: #475569; margin-bottom: .3rem; }
+        .dc-addr { font-size: .72rem; color: #64748b; margin-bottom: .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dc-foot { display: flex; justify-content: space-between; align-items: center; }
+        .dc-agent { font-size: .68rem; color: #475569; }
+        .dc-eta { font-size: .68rem; }
+        .dc-overdue { color: #ef4444; font-weight: 600; }
+        .dc-ok { color: #22c55e; }
+
+        /* Map */
+        .map-wrap { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        /* Map overlays */
+        .map-overlay {
+            position: absolute; z-index: 1000;
+            background: rgba(15,23,42,.92); border: 1px solid rgba(255,255,255,.1);
+            border-radius: 10px; padding: .6rem .9rem; backdrop-filter: blur(10px);
+        }
+        .map-overlay.top-left { top: 1rem; left: 1rem; }
+        .map-overlay.top-right { top: 1rem; right: 1rem; }
+        .map-overlay.bottom-left { bottom: 1.5rem; left: 1rem; }
+
+        .legend-item { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; font-size: .72rem; color: #94a3b8; }
+        .legend-item:last-child { margin-bottom: 0; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Pulse animation for OutForDelivery */
+        @@keyframes pulse-ring {
+            0% { transform: scale(1); opacity: .8; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .pulse-marker::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%; height: 100%; border-radius: 50%;
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+
+        /* Leaflet popup dark */
+        .leaflet-popup-content-wrapper { background: #1e293b; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; color: #e2e8f0; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+        .leaflet-popup-tip { background: #1e293b; }
+        .leaflet-popup-content { margin: 12px 16px; font-family: 'Plus Jakarta Sans', sans-serif; min-width: 200px; }
+        .leaflet-popup-close-button { color: #64748b !important; }
+
+        @@media (max-width: 768px) {
+            .shell { flex-direction: column; }
+            .sidebar { width: 100%; min-width: 0; height: 45vh; }
+            .map-wrap { height: 55vh; }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+
+    <!-- ══ SIDEBAR ══ -->
+    <div class="sidebar">
+        <div class="sidebar-head">
+            <div class="brand">
+                <div class="brand-icon"><i class="bi bi-truck-front-fill text-white" style="font-size:.9rem;"></i></div>
+                <span>Live Delivery Map</span>
+                <span style="margin-left:auto; font-size:.7rem; color:#475569;">@Model.Count active</span>
+            </div>
+            <a href="/Delivery" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <!-- Status filter pills -->
+        <div class="stats-row" id="filterPills">
+            @{
+                var statusGroups = new[]
+                {
+                    ("All",            Model.Count,                                    "#94a3b8"),
+                    ("Pending",        Model.Count(d => d.Status == "Pending"),        "#94a3b8"),
+                    ("Packed",         Model.Count(d => d.Status == "Packed"),         "#0ea5e9"),
+                    ("Shipped",        Model.Count(d => d.Status == "Shipped"),        "#2563eb"),
+                    ("OutForDelivery", Model.Count(d => d.Status == "OutForDelivery"), "#f59e0b"),
+                    ("Delivered",      Model.Count(d => d.Status == "Delivered"),      "#22c55e"),
+                    ("Failed",         Model.Count(d => d.Status == "Failed"),         "#ef4444"),
+                };
+            }
+            @foreach (var (s, count, color) in statusGroups)
+            {
+                <div class="stat-pill @(s == "All" ? "active" : "")"
+                     style="color:@color;"
+                     onclick="filterByStatus('@s')">
+                    <div class="dot" style="background:@color;"></div>
+                    <span>@(s == "OutForDelivery" ? "OFD" : s)</span>
+                    <span class="stat-count" style="color:@color;">@count</span>
+                </div>
+            }
+        </div>
+
+        <!-- Search -->
+        <div class="search-wrap">
+            <input type="text" class="search-input" id="searchInput"
+                   placeholder="🔍  Search recipient, tracking ID, city..."
+                   oninput="searchDeliveries(this.value)"/>
+        </div>
+
+        <!-- Delivery list -->
+        <div class="delivery-list" id="deliveryList">
+            @foreach (var d in Model)
+            {
+                <div class="delivery-card"
+                     id="card-@d.DeliveryId"
+                     data-status="@d.Status"
+                     data-search="@d.RecipientName.ToLower() @d.TrackingId.ToLower() @d.FullAddress.ToLower()"
+                     onclick="focusDelivery(@d.DeliveryId, @d.Latitude, @d.Longitude)">
+                    <div class="dc-head">
+                        <div class="dc-name">@d.RecipientName</div>
+                        <span class="dc-status"
+                              style="background:@(StatusColor(d.Status))20; color:@StatusColor(d.Status); border:1px solid @(StatusColor(d.Status))40;">
+                            @StatusEmoji(d.Status) @StatusLabel(d.Status)
+                        </span>
+                    </div>
+                    <div class="dc-tid">@d.TrackingId · Order #@d.OrderId</div>
+                    <div class="dc-addr"><i class="bi bi-geo-alt me-1"></i>@d.FullAddress</div>
+                    <div class="dc-foot">
+                        @* <span class="dc-agent">
+                            @if (!string.IsNullOrEmpty(d.AgentName))
+                            { <text><i class="bi bi-person me-1"></i>@d.AgentName</text> }
+                            else { <text style="color:#334155; font-style:italic;">Unassigned</text> }
+                        </span> *@
+                        <span class="dc-agent">
+                            @if (!string.IsNullOrEmpty(d.AgentName))
+                            {
+                                <span><i class="bi bi-person me-1"></i>@d.AgentName</span>
+                            }
+                            else
+                            {
+                                <span style="color:#334155; font-style:italic;">Unassigned</span>
+                            }
+                        </span>
+                        <span class="dc-eta @(d.IsOverdue ? "dc-overdue" : "dc-ok")">
+                            @if (d.IsOverdue)
+                            { <text><i class="bi bi-exclamation-triangle me-1"></i>Overdue</text> }
+                            else
+                            { <text><i class="bi bi-calendar-check me-1"></i>@d.EstimatedDelivery.ToString("dd MMM")</text> }
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ══ MAP ══ -->
+    <div class="map-wrap">
+        <div id="map"></div>
+
+        <!-- Top-left overlay: live count -->
+        <div class="map-overlay top-left">
+            <div style="font-size:.65rem; color:#475569; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.3rem;">Live Deliveries</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#e2e8f0; line-height:1;">@Model.Count</div>
+            <div style="font-size:.7rem; color:#475569; margin-top:.1rem;">on map simultaneously</div>
+        </div>
+
+        <!-- Top-right: legend -->
+        <div class="map-overlay top-right">
+            <div style="font-size:.65rem; color:#475569; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.4rem;">Legend</div>
+            @foreach (var (s, _, color) in new[] {
+                ("Pending","","#94a3b8"),("Packed","","#0ea5e9"),("Shipped","","#2563eb"),
+                ("OutForDelivery","","#f59e0b"),("Delivered","","#22c55e"),("Failed","","#ef4444")
+            })
+            {
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:@color;"></div>
+                    @StatusLabel(s)
+                </div>
+            }
+        </div>
+
+        <!-- Bottom-left: hint -->
+        <div class="map-overlay bottom-left" style="font-size:.72rem; color:#475569;">
+            <i class="bi bi-hand-index me-1"></i>Click marker or card to focus · Click card again to view details
+        </div>
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map init ──────────────────────────────────────────────────────────────
+var map = L.map('map', {
+    zoomControl: true,
+    attributionControl: true
+}).setView([@centerLat, @centerLng], 5);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+// ── Status config ─────────────────────────────────────────────────────────
+var statusColors = {
+    "Pending":"#94a3b8","Packed":"#0ea5e9","Shipped":"#2563eb",
+    "OutForDelivery":"#f59e0b","Delivered":"#22c55e","Failed":"#ef4444"
+};
+var statusEmoji = {
+    "Pending":"⏳","Packed":"📦","Shipped":"🚛",
+    "OutForDelivery":"🚴","Delivered":"✅","Failed":"❌"
+};
+
+// ── Marker factory ────────────────────────────────────────────────────────
+function makeIcon(emoji, color, size, pulse) {
+    size = size || 38;
+    var pulseStyle = pulse
+        ? `box-shadow:0 0 0 0 ${color}66; animation:pulseAnim 1.5s infinite;`
+        : `box-shadow:0 3px 10px rgba(0,0,0,.5);`;
+    return L.divIcon({
+        html: `<div style="
+            position:relative; width:${size}px; height:${size}px; border-radius:50%;
+            background:${color}; display:flex; align-items:center;
+            justify-content:center; font-size:${Math.round(size*.42)}px;
+            border:2.5px solid rgba(255,255,255,.75); ${pulseStyle}">${emoji}</div>`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
+        popupAnchor: [0, -(size/2+4)]
+    });
+}
+
+// ── All delivery data ─────────────────────────────────────────────────────
+var deliveries = [
+    @foreach (var d in Model)
+    {
+        @:{ id: @d.DeliveryId, orderId: @d.OrderId,
+        @:  trackingId: "@d.TrackingId",
+        @:  name: "@Html.Raw(d.RecipientName.Replace("\"","\\\""))",
+        @:  address: "@Html.Raw(d.FullAddress.Replace("\"","\\\""))",
+        @:  status: "@d.Status",
+        @:  lat: @d.Latitude, lng: @d.Longitude,
+        @:  eta: "@d.EstimatedDelivery.ToString("dd MMM yyyy")",
+        @:  overdue: @d.IsOverdue.ToString().ToLower(),
+        @:  agent: "@(d.AgentName ?? "")",
+        @:  route: [
+            @foreach (var r in d.RouteHistory)
+            {
+                @:{ status:"@r.Status", lat:@r.Latitude, lng:@r.Longitude,
+                @:  time:"@r.Timestamp.ToString("dd MMM HH:mm")", loc:"@Html.Raw((r.Location ?? "").Replace("\"","\\\""))" },
+            }
+        @:  ]
+        @:},
+    }
+];
+
+// ── Marker + polyline registry ────────────────────────────────────────────
+var markerMap  = {};   // id → marker
+var routeMap   = {};   // id → polyline[]
+var selectedId = null;
+
+// ── Draw all deliveries ───────────────────────────────────────────────────
+deliveries.forEach(function(d) {
+    var color  = statusColors[d.status] || '#94a3b8';
+    var emoji  = statusEmoji[d.status]  || '📍';
+    var isPulse = d.status === 'OutForDelivery';
+    var isDelivered = d.status === 'Delivered';
+
+    var label  = d.status === 'OutForDelivery' ? 'Out for Delivery' : d.status;
+    var etaHtml = d.overdue
+        ? `<span style="color:#ef4444;font-weight:600;">⚠ Overdue</span>`
+        : `<span style="color:#22c55e;">${d.eta}</span>`;
+
+    var popupHtml = `
+        <div>
+            <div style="font-weight:700;font-size:13px;color:${color};margin-bottom:6px;">
+                ${emoji} ${label}
+            </div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:3px;">${d.name}</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:3px;">
+                <i>📍 ${d.address}</i>
+            </div>
+            <div style="font-size:11px;color:#475569;margin-bottom:2px;">
+                🏷 ${d.trackingId} &nbsp;·&nbsp; Order #${d.orderId}
+            </div>
+            ${d.agent ? `<div style="font-size:11px;color:#475569;margin-bottom:2px;">👤 ${d.agent}</div>` : ''}
+            <div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08);">
+                📅 ETA: ${etaHtml}
+            </div>
+            <div style="margin-top:8px;display:flex;gap:6px;">
+                <button onclick="goToDetails(${d.id})"
+                    style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit;">
+                    View Details
+                </button>
+                <button onclick="goToTracking('${d.trackingId}')"
+                    style="flex:1;background:rgba(255,255,255,.08);color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit;">
+                    Track
+                </button>
+            </div>
+        </div>`;
+
+    var marker = L.marker([d.lat, d.lng], {
+        icon: makeIcon(emoji, color, isPulse ? 44 : 36, isPulse)
+    }).addTo(map).bindPopup(popupHtml, { maxWidth: 240 });
+
+    marker.on('click', function() {
+        highlightCard(d.id);
+        showRoute(d.id);
+    });
+
+    markerMap[d.id] = marker;
+
+    // Draw route polyline (hidden initially)
+    if (d.route && d.route.length > 1) {
+        var coords = d.route.map(r => [r.lat, r.lng]);
+        var poly = L.polyline(coords, {
+            color: color, weight: 2.5, opacity: 0,
+            dashArray: '8 5'
+        }).addTo(map);
+        routeMap[d.id] = poly;
+    }
+
+    // Destination pin (small)
+    if (!isDelivered) {
+        L.circleMarker([d.lat, d.lng], {
+            radius: 4, color: color, fillColor: color,
+            fillOpacity: 0.3, weight: 1, opacity: 0.4
+        }).addTo(map);
+    }
+});
+
+// ── Fit all markers ───────────────────────────────────────────────────────
+if (deliveries.length > 0) {
+    var allLatLngs = deliveries.map(d => [d.lat, d.lng]);
+    map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50], maxZoom: 12 });
+}
+
+// ── Pulse animation CSS ───────────────────────────────────────────────────
+var styleEl = document.createElement('style');
+styleEl.textContent = `
+@@keyframes pulseAnim {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6), 0 3px 10px rgba(0,0,0,.5); }
+    70%  { box-shadow: 0 0 0 14px rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.5); }
+    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.5); }
+}`;
+document.head.appendChild(styleEl);
+
+// ── Focus on delivery ─────────────────────────────────────────────────────
+function focusDelivery(id, lat, lng) {
+    map.flyTo([lat, lng], 14, { animate: true, duration: 0.8 });
+    setTimeout(function() {
+        if (markerMap[id]) markerMap[id].openPopup();
+    }, 700);
+    highlightCard(id);
+    showRoute(id);
+}
+
+// ── Highlight sidebar card ────────────────────────────────────────────────
+function highlightCard(id) {
+    if (selectedId) {
+        var prev = document.getElementById('card-' + selectedId);
+        if (prev) prev.classList.remove('selected');
+    }
+    selectedId = id;
+    var card = document.getElementById('card-' + id);
+    if (card) {
+        card.classList.add('selected');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+// ── Show route for selected delivery ─────────────────────────────────────
+function showRoute(id) {
+    // Hide all routes first
+    Object.keys(routeMap).forEach(function(key) {
+        routeMap[key].setStyle({ opacity: 0 });
+    });
+    // Show selected route
+    if (routeMap[id]) {
+        routeMap[id].setStyle({ opacity: 0.7 });
+        routeMap[id].bringToFront();
+    }
+}
+
+// ── Filter by status ──────────────────────────────────────────────────────
+var currentFilter = 'All';
+
+function filterByStatus(status) {
+    currentFilter = status;
+
+    // Update pill active states
+    document.querySelectorAll('.stat-pill').forEach(function(p) {
+        p.classList.remove('active');
+        if (p.getAttribute('onclick').includes("'" + status + "'")) {
+            p.classList.add('active');
+        }
+    });
+
+    var cards = document.querySelectorAll('.delivery-card');
+    var searchVal = document.getElementById('searchInput').value.toLowerCase();
+
+    cards.forEach(function(card) {
+        var cardStatus  = card.getAttribute('data-status');
+        var cardSearch  = card.getAttribute('data-search');
+        var matchStatus = status === 'All' || cardStatus === status;
+        var matchSearch = !searchVal || cardSearch.includes(searchVal);
+        card.classList.toggle('hidden', !(matchStatus && matchSearch));
+    });
+
+    // Show/hide markers
+    deliveries.forEach(function(d) {
+        var matchStatus = status === 'All' || d.status === status;
+        var matchSearch = !searchVal || (d.name.toLowerCase() + d.trackingId.toLowerCase() + d.address.toLowerCase()).includes(searchVal);
+        if (markerMap[d.id]) {
+            if (matchStatus && matchSearch) {
+                if (!map.hasLayer(markerMap[d.id])) markerMap[d.id].addTo(map);
+            } else {
+                if (map.hasLayer(markerMap[d.id])) map.removeLayer(markerMap[d.id]);
+            }
+        }
+    });
+
+    // Fit visible markers
+    var visible = deliveries.filter(d => {
+        var matchStatus = status === 'All' || d.status === status;
+        return matchStatus;
+    });
+    if (visible.length > 0) {
+        var bounds = L.latLngBounds(visible.map(d => [d.lat, d.lng]));
+        map.flyToBounds(bounds, { padding: [50,50], maxZoom: 12, animate: true, duration: 0.8 });
+    }
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+function searchDeliveries(val) {
+    val = val.toLowerCase();
+    var cards = document.querySelectorAll('.delivery-card');
+    cards.forEach(function(card) {
+        var cardStatus  = card.getAttribute('data-status');
+        var cardSearch  = card.getAttribute('data-search');
+        var matchStatus = currentFilter === 'All' || cardStatus === currentFilter;
+        var matchSearch = !val || cardSearch.includes(val);
+        card.classList.toggle('hidden', !(matchStatus && matchSearch));
+    });
+
+    // Filter markers too
+    deliveries.forEach(function(d) {
+        var matchStatus = currentFilter === 'All' || d.status === currentFilter;
+        var searchStr   = (d.name + d.trackingId + d.address).toLowerCase();
+        var matchSearch = !val || searchStr.includes(val);
+        if (markerMap[d.id]) {
+            if (matchStatus && matchSearch) {
+                if (!map.hasLayer(markerMap[d.id])) markerMap[d.id].addTo(map);
+            } else {
+                if (map.hasLayer(markerMap[d.id])) map.removeLayer(markerMap[d.id]);
+            }
+        }
+    });
+}
+
+// ── Navigate to details/tracking ─────────────────────────────────────────
+function goToDetails(id)       { window.location.href = '/Delivery/Details/' + id; }
+function goToTracking(trackId) { window.location.href = '/Delivery/Tracking/' + trackId; }
+
+// ── Auto-refresh every 30 seconds ────────────────────────────────────────
+setTimeout(function() { location.reload(); }, 30000);
+</script>
+</body>
+</html>
