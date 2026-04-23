@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="../../../OneDrive/Documents/Project-E-Commerce-DOTNET/ProductAPI/ProductAPI.csproj" />
+  <Project Path="AddressAPI/AddressAPI.csproj" />
+  <Project Path="CartAPI/CartAPI.csproj" />
+  <Project Path="OrderAPI/OrderAPI.csproj" />
+</Solution>
