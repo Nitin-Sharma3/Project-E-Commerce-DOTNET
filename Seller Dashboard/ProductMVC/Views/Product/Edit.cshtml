@@ -1,0 +1,53 @@
+﻿@model SellerMVC.Models.ProductViewModel
+@* @model SellerMVC.Models.ProductViewModel *@
+<h2>Edit Product</h2>
+
+<form asp-action="Edit" method="post">
+
+<input type="hidden" asp-for="Id" />
+
+<div class="mb-2">
+<label>Name</label>
+<input asp-for="Name" class="form-control"/>
+</div>
+
+<div class="mb-2">
+<label>Price</label>
+<input asp-for="Price" class="form-control"/>
+</div>
+
+<div class="mb-2">
+<label>Stock</label>
+<input asp-for="Stock" class="form-control"/>
+</div>
+
+<div class="mb-2">
+<label>Description</label>
+<input asp-for="Description" class="form-control"/>
+</div>
+
+    <div class="mb-2">
+        <label>Category</label>
+        <input asp-for="Category" class="form-control" />
+    </div>
+
+<div class="mb-2">
+<label>Image URL 1</label>
+<input asp-for="ImageUrl1" class="form-control"/>
+</div>
+
+<div class="mb-2">
+<label>Image URL 2</label>
+<input asp-for="ImageUrl2" class="form-control"/>
+</div>
+
+<div class="mb-2">
+<label>Image URL 3</label>
+<input asp-for="ImageUrl3" class="form-control"/>
+</div>
+
+<button class="btn btn-warning">Update Product</button>
+
+<a asp-action="Inventory" class="btn btn-secondary">Cancel</a>
+
+</form>

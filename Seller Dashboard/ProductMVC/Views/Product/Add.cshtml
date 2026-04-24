@@ -1,0 +1,113 @@
+﻿@model SellerMVC.Models.ProductViewModel
+
+<style>
+
+    .form-card {
+        max-width: 700px;
+        background: #181825;
+        padding: 30px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.06);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    }
+
+        .form-card h2 {
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+    .form-label {
+        font-size: 13px;
+        color: #9ca3af;
+        margin-bottom: 6px;
+    }
+
+    .form-control {
+        background: #0f0f1a;
+        border: 1px solid rgba(255,255,255,0.08);
+        color: white;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 14px;
+    }
+
+        .form-control:focus {
+            background: #0f0f1a;
+            border-color: #7c6af7;
+            box-shadow: 0 0 0 2px rgba(124,106,247,0.2);
+            color: white;
+        }
+
+        .form-control::placeholder {
+            color: #6b7280;
+        }
+
+    .form-group {
+        margin-bottom: 18px;
+    }
+
+    .btn-add {
+        margin-top: 10px;
+        background: linear-gradient(135deg,#7c6af7,#a78bfa);
+        border: none;
+        padding: 10px 22px;
+        border-radius: 10px;
+        font-weight: 500;
+    }
+
+        .btn-add:hover {
+            opacity: 0.9;
+        }
+
+</style>
+
+<div class="form-card">
+
+    <h2>Add Product</h2>
+
+    <form asp-action="Add">
+
+        <div class="form-group">
+            <label class="form-label">Product Name</label>
+            <input asp-for="Name" class="form-control" placeholder="Enter product name" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Price</label>
+            <input asp-for="Price" class="form-control" placeholder="Enter price" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Stock</label>
+            <input asp-for="Stock" class="form-control" placeholder="Enter stock quantity" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Description</label>
+            <input asp-for="Description" class="form-control" placeholder="Product description" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <input asp-for="Category" class="form-control" placeholder="Enter Category" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Main Image URL</label>
+            <input asp-for="ImageUrl1" class="form-control" placeholder="Image URL" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Optional Image URL 2</label>
+            <input asp-for="ImageUrl2" class="form-control" placeholder="Image URL" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Optional Image URL 3</label>
+            <input asp-for="ImageUrl3" class="form-control" placeholder="Image URL" />
+        </div>
+
+        <button class="btn btn-add">Add Product</button>
+
+    </form>
+
+</div>

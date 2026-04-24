@@ -1,0 +1,466 @@
+﻿@model DeliveryMVC.Models.TrackingViewModel
+@{
+    Layout = null;
+    var defaultLat = Model.CurrentLatitude ?? 20.5937;
+    var defaultLng = Model.CurrentLongitude ?? 78.9629;
+
+    string StatusColor(string s) => s switch {
+        "Pending"        => "#94a3b8",
+        "Packed"         => "#0ea5e9",
+        "Shipped"        => "#2563eb",
+        "OutForDelivery" => "#f59e0b",
+        "Delivered"      => "#22c55e",
+        "Failed"         => "#ef4444",
+        _                => "#94a3b8"
+    };
+    string StatusEmoji(string s) => s switch {
+        "Pending"        => "⏳",
+        "Packed"         => "📦",
+        "Shipped"        => "🚛",
+        "OutForDelivery" => "🚴",
+        "Delivered"      => "✅",
+        "Failed"         => "❌",
+        _                => "📍"
+    };
+    string StatusLabel(string s) => s == "OutForDelivery" ? "Out for Delivery" : s;
+
+    var steps = new[] { "Pending", "Packed", "Shipped", "OutForDelivery", "Delivered" };
+    var currentIdx = Array.IndexOf(steps, Model.CurrentStatus);
+    var progress = Model.CurrentStatus == "Failed" ? 0
+        : currentIdx < 0 ? 0
+        : (int)Math.Round((currentIdx + 1) / (double)steps.Length * 100);
+
+    var trackPoints = Model.Timeline
+        .Where(t => t.Latitude.HasValue && t.Longitude.HasValue)
+        .OrderBy(t => t.Timestamp)
+        .ToList();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Track — @Model.TrackingId</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; overflow: hidden; }
+
+        .shell { display: flex; height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 420px; min-width: 340px; background: #0f172a;
+            border-right: 1px solid rgba(255,255,255,.07);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .sidebar-head {
+            padding: 1.1rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,.07);
+            flex-shrink: 0;
+        }
+        .back-btn {
+            display: inline-flex; align-items: center; gap: .4rem;
+            color: #64748b; font-size: .8rem; text-decoration: none; margin-bottom: .7rem;
+        }
+        .back-btn:hover { color: #94a3b8; }
+        .tid { font-family: monospace; font-size: .82rem; background: rgba(37,99,235,.15); color: #60a5fa; padding: .25rem .6rem; border-radius: 5px; border: 1px solid rgba(37,99,235,.25); }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .3rem .75rem; border-radius: 20px; font-size: .78rem; font-weight: 600; margin-top: .5rem;
+        }
+
+        /* Progress stepper */
+        .stepper { display: flex; align-items: center; padding: .9rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
+        .step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+        .step:not(:last-child)::after {
+            content: ''; position: absolute; top: 11px; left: 55%;
+            width: 90%; height: 2px; background: rgba(255,255,255,.08);
+        }
+        .step:not(:last-child).done::after { background: #22c55e; }
+        .step:not(:last-child).active::after { background: rgba(255,255,255,.08); }
+        .step-dot {
+            width: 22px; height: 22px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .6rem; z-index: 1; border: 2px solid rgba(255,255,255,.1);
+            background: #1e293b; color: #475569; transition: all .3s;
+        }
+        .step.done .step-dot { background: #22c55e; color: #fff; border-color: #22c55e; }
+        .step.active .step-dot { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,.2); }
+        .step.failed .step-dot { background: #ef4444; color: #fff; border-color: #ef4444; }
+        .step-label { font-size: .6rem; color: #475569; margin-top: .3rem; text-align: center; }
+        .step.done .step-label, .step.active .step-label { color: #94a3b8; }
+
+        /* Info cards */
+        .info-scroll { flex: 1; overflow-y: auto; padding: 1rem 1.4rem; }
+        .info-scroll::-webkit-scrollbar { width: 3px; }
+        .info-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+        .info-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: .9rem 1rem; margin-bottom: .75rem; }
+        .info-card-title { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #475569; margin-bottom: .6rem; display: flex; align-items: center; gap: .4rem; }
+        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .45rem; }
+        .info-row:last-child { margin-bottom: 0; }
+        .ilabel { font-size: .73rem; color: #475569; }
+        .ivalue { font-size: .78rem; color: #cbd5e1; font-weight: 500; text-align: right; max-width: 58%; }
+
+        /* Timeline */
+        .tl-title { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #475569; margin-bottom: .65rem; display: flex; align-items: center; gap: .4rem; }
+        .tl { position: relative; padding-left: 1.75rem; }
+        .tl::before { content: ''; position: absolute; left: .52rem; top: 0; bottom: 0; width: 1.5px; background: rgba(255,255,255,.06); }
+        .tl-item { position: relative; padding-bottom: 1rem; cursor: pointer; }
+        .tl-item:last-child { padding-bottom: 0; }
+        .tl-dot {
+            position: absolute; left: -1.38rem; top: .15rem;
+            width: 18px; height: 18px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .55rem; z-index: 1;
+        }
+        .tl-dot.current { box-shadow: 0 0 0 3px rgba(37,99,235,.25); }
+        .tl-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); border-radius: 7px; padding: .6rem .75rem; transition: border-color .15s; }
+        .tl-item:hover .tl-card { border-color: rgba(96,165,250,.25); background: rgba(255,255,255,.05); }
+        .tl-head { display: flex; justify-content: space-between; align-items: center; }
+        .tl-status { font-size: .8rem; font-weight: 600; }
+        .tl-time { font-size: .68rem; color: #475569; }
+        .tl-remark { font-size: .73rem; color: #64748b; margin-top: .2rem; }
+        .tl-loc { font-size: .68rem; color: #475569; margin-top: .15rem; }
+
+        /* Map */
+        .map-wrap { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        /* Map overlays */
+        .map-badge {
+            position: absolute; z-index: 1000;
+            background: rgba(15,23,42,.92); border: 1px solid rgba(255,255,255,.1);
+            border-radius: 10px; padding: .6rem .9rem; backdrop-filter: blur(10px);
+        }
+        .map-badge.tl { top: 1rem; left: 1rem; }
+        .map-badge.br { bottom: 1.25rem; right: 1rem; font-size: .72rem; color: #475569; }
+        .map-badge.eta { top: 1rem; right: 1rem; text-align: right; }
+
+        /* Leaflet popup override */
+        .leaflet-popup-content-wrapper { background: #1e293b; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; color: #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+        .leaflet-popup-tip { background: #1e293b; }
+        .leaflet-popup-content { margin: 10px 14px; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        @@media (max-width: 768px) {
+            .shell { flex-direction: column; }
+            .sidebar { width: 100%; min-width: 0; height: 52vh; }
+            .map-wrap { height: 48vh; }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+
+    <!-- ══ SIDEBAR ══════════════════════════════════════════════════════════ -->
+    <div class="sidebar">
+        <div class="sidebar-head">
+            <a href="/Delivery" class="back-btn"><i class="bi bi-arrow-left"></i> All Deliveries</a>
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="tid">@Model.TrackingId</span>
+                <a href="/Delivery/Details/0" class="text-muted" style="font-size:.78rem; text-decoration:none;">
+                    <i class="bi bi-pencil-square me-1"></i>Manage
+                </a>
+            </div>
+            <div>
+                <span class="status-pill"
+                      style="background:@(StatusColor(Model.CurrentStatus))18; color:@StatusColor(Model.CurrentStatus); border:1px solid @(StatusColor(Model.CurrentStatus))35;">
+                    @StatusEmoji(Model.CurrentStatus) @StatusLabel(Model.CurrentStatus)
+                </span>
+            </div>
+        </div>
+
+        <!-- Stepper -->
+        <div class="stepper">
+            @{
+                var stepDefs = new[] {
+                    ("Pending","⏳"), ("Packed","📦"), ("Shipped","🚛"),
+                    ("OutForDelivery","🚴"), ("Delivered","✅")
+                };
+            }
+            @foreach (var (sName, sEmoji) in stepDefs)
+            {
+                var idx = Array.IndexOf(steps, sName);
+                string cls;
+                if (Model.CurrentStatus == "Failed")
+                    cls = idx < currentIdx ? "done" : "";
+                else
+                    cls = idx < currentIdx ? "done" : idx == currentIdx ? "active" : "";
+
+                <div class="step @cls">
+                    <div class="step-dot">
+                        @if (cls == "done") { <i class="bi bi-check-lg" style="font-size:.6rem;"></i> }
+                        else { @sEmoji }
+                    </div>
+                    <span class="step-label">@(sName == "OutForDelivery" ? "OFD" : sName)</span>
+                </div>
+            }
+        </div>
+
+        <!-- Scrollable content -->
+        <div class="info-scroll">
+
+            <!-- Delivery info -->
+            <div class="info-card">
+                <div class="info-card-title"><i class="bi bi-person-fill"></i> Recipient</div>
+                <div class="info-row">
+                    <span class="ilabel">Name</span>
+                    <span class="ivalue">@Model.RecipientName</span>
+                </div>
+                <div class="info-row">
+                    <span class="ilabel">Address</span>
+                    <span class="ivalue">@Model.DestinationAddress</span>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.AgentName))
+                {
+                    <div class="info-row">
+                        <span class="ilabel">Agent</span>
+                        <span class="ivalue">@Model.AgentName · @Model.AgentPhone</span>
+                    </div>
+                }
+            </div>
+
+            <!-- ETA -->
+            <div class="info-card">
+                <div class="info-card-title"><i class="bi bi-calendar-check"></i> Delivery Timeline</div>
+                <div class="info-row">
+                    <span class="ilabel">Estimated</span>
+                    <span class="ivalue" style="color:#f59e0b;">@Model.EstimatedDelivery.ToString("dd MMM yyyy")</span>
+                </div>
+                @if (Model.ActualDelivery.HasValue)
+                {
+                    <div class="info-row">
+                        <span class="ilabel">Delivered On</span>
+                        <span class="ivalue" style="color:#22c55e;">@Model.ActualDelivery.Value.ToString("dd MMM yyyy HH:mm")</span>
+                    </div>
+                }
+                else
+                {
+                    var daysLeft = (Model.EstimatedDelivery - DateTime.Now).Days;
+                    <div class="info-row">
+                        <span class="ilabel">Days Left</span>
+                        <span class="ivalue" style="color:@(daysLeft < 0 ? "#ef4444" : "#22c55e");">
+                            @(daysLeft < 0 ? $"{Math.Abs(daysLeft)} days overdue" : daysLeft == 0 ? "Today" : $"{daysLeft} days")
+                        </span>
+                    </div>
+                }
+                @if (Model.CurrentLatitude.HasValue)
+                {
+                    <div class="info-row">
+                        <span class="ilabel">GPS</span>
+                        <span class="ivalue" style="font-family:monospace; font-size:.7rem;">
+                            @Model.CurrentLatitude.Value.ToString("F4")°N, @Model.CurrentLongitude!.Value.ToString("F4")°E
+                        </span>
+                    </div>
+                }
+            </div>
+
+            <!-- Progress bar -->
+            <div class="info-card">
+                <div class="info-card-title"><i class="bi bi-bar-chart-fill"></i> Progress — @progress%</div>
+                <div style="height:8px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden;">
+                    <div style="height:100%; width:@progress%; background:@StatusColor(Model.CurrentStatus); border-radius:4px; transition:width .8s ease;"></div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="tl-title"><i class="bi bi-clock-history"></i> Tracking History</div>
+            <div class="tl">
+                @foreach (var point in Model.Timeline.OrderByDescending(t => t.Timestamp))
+                {
+                    var dotColor = StatusColor(point.Status);
+                    <div class="tl-item"
+                         onclick="focusPoint(@(point.Latitude ?? defaultLat), @(point.Longitude ?? defaultLng), '@point.Status', '@(point.Location ?? "")', '@point.Timestamp.ToString("dd MMM HH:mm")')">
+                        <div class="tl-dot @(point.IsCurrent ? "current" : "")"
+                             style="background:@dotColor; color:#fff;">
+                            <span>@StatusEmoji(point.Status)</span>
+                        </div>
+                        <div class="tl-card">
+                            <div class="tl-head">
+                                <span class="tl-status" style="color:@dotColor;">@StatusLabel(point.Status)</span>
+                                <span class="tl-time">@point.Timestamp.ToString("dd MMM · HH:mm")</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(point.Remarks))
+                            {
+                                <div class="tl-remark">@point.Remarks</div>
+                            }
+                            @if (!string.IsNullOrEmpty(point.Location))
+                            {
+                                <div class="tl-loc"><i class="bi bi-geo-alt me-1"></i>@point.Location</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+        </div><!-- /info-scroll -->
+    </div><!-- /sidebar -->
+
+    <!-- ══ MAP ══════════════════════════════════════════════════════════════ -->
+    <div class="map-wrap">
+        <div id="map"></div>
+
+        <!-- Top-left: current status -->
+        <div class="map-badge tl">
+            <div style="font-size:.65rem; color:#475569; margin-bottom:.2rem; text-transform:uppercase; letter-spacing:.06em;">Live Status</div>
+            <div style="font-size:.88rem; font-weight:600;">
+                @StatusEmoji(Model.CurrentStatus)
+                <span style="color:@StatusColor(Model.CurrentStatus);">@StatusLabel(Model.CurrentStatus)</span>
+            </div>
+            @if (Model.CurrentLatitude.HasValue)
+            {
+                <div style="font-size:.65rem; color:#475569; font-family:monospace; margin-top:.2rem;">
+                    @Model.CurrentLatitude.Value.ToString("F4")° N &nbsp; @Model.CurrentLongitude!.Value.ToString("F4")° E
+                </div>
+            }
+        </div>
+
+        <!-- Top-right: ETA -->
+        <div class="map-badge eta">
+            <div style="font-size:.65rem; color:#475569; margin-bottom:.2rem; text-transform:uppercase; letter-spacing:.06em;">Est. Delivery</div>
+            <div style="font-size:.85rem; font-weight:600; color:#f59e0b;">@Model.EstimatedDelivery.ToString("dd MMM yyyy")</div>
+        </div>
+
+        <!-- Bottom-right: hint -->
+        <div class="map-badge br">
+            <i class="bi bi-hand-index me-1"></i>Click timeline entries to zoom map
+        </div>
+    </div>
+
+</div><!-- /shell -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map init ──────────────────────────────────────────────────────────────
+var map = L.map('map', {
+    zoomControl: true,
+    attributionControl: true
+}).setView([@defaultLat, @defaultLng], 11);
+
+// OpenStreetMap tiles (free, no API key)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+// ── Colour + emoji maps ───────────────────────────────────────────────────
+var statusColors = {
+    "Pending":"#94a3b8","Packed":"#0ea5e9","Shipped":"#2563eb",
+    "OutForDelivery":"#f59e0b","Delivered":"#22c55e","Failed":"#ef4444"
+};
+var statusEmoji = {
+    "Pending":"⏳","Packed":"📦","Shipped":"🚛",
+    "OutForDelivery":"🚴","Delivered":"✅","Failed":"❌"
+};
+
+// ── Custom marker factory ─────────────────────────────────────────────────
+function makeMarker(emoji, color, size) {
+    size = size || 36;
+    return L.divIcon({
+        html: `<div style="
+            width:${size}px;height:${size}px;border-radius:50%;
+            background:${color};display:flex;align-items:center;
+            justify-content:center;font-size:${Math.round(size*.45)}px;
+            box-shadow:0 3px 10px rgba(0,0,0,.45);
+            border:2.5px solid rgba(255,255,255,.7);">${emoji}</div>`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
+        popupAnchor: [0, -(size/2)]
+    });
+}
+
+// ── Destination marker ────────────────────────────────────────────────────
+var destLat = @defaultLat, destLng = @defaultLng;
+L.marker([destLat, destLng], { icon: makeMarker('🏠','#7c3aed',44) })
+ .addTo(map)
+ .bindPopup(`<div style="font-weight:700;margin-bottom:4px;">🏠 Delivery Address</div>
+             <div style="font-size:12px;color:#94a3b8;">@Model.DestinationAddress</div>
+             <div style="font-size:11px;color:#60a5fa;margin-top:4px;">@Model.RecipientName</div>`);
+
+// ── Track points from timeline ────────────────────────────────────────────
+var trackPoints = [
+    @foreach (var p in trackPoints)
+    {
+        @:{ lat: @p.Latitude, lng: @p.Longitude,
+        @:  status: "@p.Status",
+        @:  remarks: "@Html.Raw(p.Remarks?.Replace("\"","\\\"") ?? "")",
+        @:  location: "@Html.Raw(p.Location?.Replace("\"","\\\"") ?? "")",
+        @:  time: "@p.Timestamp.ToString("dd MMM yyyy · HH:mm")",
+        @:  isCurrent: @p.IsCurrent.ToString().ToLower() },
+    }
+];
+
+var markerRefs = [];
+
+// ── Draw polyline route ───────────────────────────────────────────────────
+if (trackPoints.length > 1) {
+    var routeCoords = trackPoints.map(p => [p.lat, p.lng]);
+    // Animated dashed route
+    L.polyline(routeCoords, {
+        color: '#2563eb', weight: 3,
+        opacity: 0.6, dashArray: '10 6'
+    }).addTo(map);
+
+    // Solid route underneath
+    L.polyline(routeCoords, {
+        color: '#1d4ed8', weight: 1, opacity: 0.3
+    }).addTo(map);
+}
+
+// ── Add markers ───────────────────────────────────────────────────────────
+trackPoints.forEach(function(p) {
+    var color = statusColors[p.status] || '#94a3b8';
+    var emoji = statusEmoji[p.status] || '📍';
+    var size  = p.isCurrent ? 46 : 34;
+
+    var m = L.marker([p.lat, p.lng], { icon: makeMarker(emoji, color, size) })
+        .addTo(map)
+        .bindPopup(`
+            <div style="min-width:180px;">
+                <div style="font-weight:700;color:${color};font-size:13px;margin-bottom:5px;">
+                    ${emoji} ${p.status === 'OutForDelivery' ? 'Out for Delivery' : p.status}
+                </div>
+                ${p.remarks ? `<div style="font-size:12px;color:#94a3b8;margin-bottom:3px;">${p.remarks}</div>` : ''}
+                ${p.location ? `<div style="font-size:11px;color:#64748b;"><i>📍 ${p.location}</i></div>` : ''}
+                <div style="font-size:11px;color:#475569;margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.1);">
+                    🕐 ${p.time}
+                </div>
+                ${p.isCurrent ? `<div style="font-size:10px;color:#22c55e;margin-top:3px;font-weight:600;">● CURRENT LOCATION</div>` : ''}
+            </div>
+        `);
+
+    markerRefs.push({ m, p });
+    if (p.isCurrent) {
+        m.openPopup();
+        // Pulsing circle for current position
+        L.circle([p.lat, p.lng], {
+            radius: 800, color: color,
+            fillColor: color, fillOpacity: 0.08,
+            weight: 1.5, opacity: 0.4
+        }).addTo(map);
+    }
+});
+
+// ── Fit map to all points ─────────────────────────────────────────────────
+var allPoints = [...trackPoints.map(p => [p.lat, p.lng]), [destLat, destLng]];
+if (allPoints.length > 1) {
+    map.fitBounds(L.latLngBounds(allPoints), { padding: [60, 60] });
+} else {
+    map.setView([destLat, destLng], 13);
+}
+
+// ── Focus function called from timeline clicks ────────────────────────────
+function focusPoint(lat, lng, status, location, time) {
+    map.flyTo([lat, lng], 14, { animate: true, duration: 1 });
+    var found = markerRefs.find(r =>
+        Math.abs(r.p.lat - lat) < 0.001 && Math.abs(r.p.lng - lng) < 0.001
+    );
+    if (found) setTimeout(() => found.m.openPopup(), 800);
+}
+</script>
+</body>
+</html>
