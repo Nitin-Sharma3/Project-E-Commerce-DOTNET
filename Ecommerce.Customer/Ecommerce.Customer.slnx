@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/Customer.Services/">
-    <Project Path="Ecommerce.Customer.Orders/Ecommerce.Customer.OrderAPI.csproj" Id="bf26bef2-4198-40b1-89a0-d537d7610b19" />
-    <Project Path="Ecommerce.Customer.WishlistAPI/Ecommerce.Customer.WishlistAPI.csproj" Id="99623738-badd-44dd-82da-1cee0be48109" />
-    <Project Path="Ecommerce.Customer/Ecommerce.Customer.CartAPI.csproj" />
-    <Project Path="Ecommerece.Customer.Address/Ecommerece.Customer.Address.csproj" Id="a0e51c2b-e681-4e2a-b0e2-f8566170e018" />
-  </Folder>
-  <Project Path="Consumer.MVC/Consumer.MVC.csproj" Id="2f1fd661-b9f1-4963-be55-fcdd42aabae5" />
-</Solution>

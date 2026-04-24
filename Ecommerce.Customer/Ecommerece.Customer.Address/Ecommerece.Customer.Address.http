@@ -1,6 +1,0 @@
-@Ecommerece.Customer.Address_HostAddress = http://localhost:5240
-
-GET {{Ecommerece.Customer.Address_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

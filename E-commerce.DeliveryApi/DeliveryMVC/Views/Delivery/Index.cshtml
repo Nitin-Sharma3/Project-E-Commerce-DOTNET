@@ -1,0 +1,233 @@
+﻿@model List<DeliveryMVC.Models.DeliveryViewModel>
+@{
+    Layout = null;
+    var statuses = new[] { "All", "Pending", "Packed", "Shipped", "OutForDelivery", "Delivered", "Failed" };
+    string current = ViewBag.StatusFilter ?? "All";
+
+    string StatusBadge(string s) => s switch {
+        "Pending"        => "bg-secondary",
+        "Packed"         => "bg-info text-dark",
+        "Shipped"        => "bg-primary",
+        "OutForDelivery" => "bg-warning text-dark",
+        "Delivered"      => "bg-success",
+        "Failed"         => "bg-danger",
+        _                => "bg-light text-dark"
+    };
+    string StatusIcon(string s) => s switch {
+        "Pending"        => "bi-hourglass-split",
+        "Packed"         => "bi-box-seam",
+        "Shipped"        => "bi-truck",
+        "OutForDelivery" => "bi-bicycle",
+        "Delivered"      => "bi-check-circle-fill",
+        "Failed"         => "bi-x-circle-fill",
+        _                => "bi-circle"
+    };
+    string StatusLabel(string s) => s == "OutForDelivery" ? "Out for Delivery" : s;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Delivery Management</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f1f5f9; }
+        .sidebar {
+            width: 240px; min-height: 100vh; background: #0f172a;
+            position: fixed; top: 0; left: 0; z-index: 100;
+        }
+        .sidebar-brand {
+            padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.07);
+            display: flex; align-items: center; gap: .65rem;
+        }
+        .logo-icon { width: 34px; height: 34px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .sidebar-brand span { color: #f1f5f9; font-weight: 700; font-size: 1rem; }
+        .nav-section { color: #475569; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: .9rem .85rem .3rem; }
+        .nav-link-s { color: #94a3b8; border-radius: 8px; padding: .55rem .85rem; display: flex; align-items: center; gap: .6rem; font-size: .875rem; font-weight: 500; text-decoration: none; transition: all .15s; margin: .1rem .75rem; }
+        .nav-link-s:hover { background: rgba(255,255,255,.06); color: #e2e8f0; }
+        .nav-link-s.active { background: rgba(37,99,235,.18); color: #60a5fa; }
+        .main-content { margin-left: 240px; padding: 2rem; }
+        .topbar { background: #fff; border-radius: 12px; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 1.5rem; }
+        .stat-card { background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.05); border: 1px solid #e2e8f0; }
+        .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+        .filter-pill { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .85rem; border-radius: 20px; font-size: .8rem; font-weight: 600; border: 1.5px solid transparent; text-decoration: none; transition: all .15s; }
+        .filter-pill.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .filter-pill:not(.active) { background: #fff; color: #475569; border-color: #e2e8f0; }
+        .filter-pill:not(.active):hover { border-color: #2563eb; color: #2563eb; }
+        .delivery-table { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); border: 1px solid #e2e8f0; }
+        .delivery-table thead th { background: #f8fafc; color: #64748b; font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .85rem 1rem; border-bottom: 1px solid #e2e8f0; }
+        .delivery-table tbody td { padding: .9rem 1rem; vertical-align: middle; border-color: #f1f5f9; }
+        .delivery-table tbody tr:hover { background: #f8fafc; }
+        .tracking-chip { font-family: monospace; font-size: .78rem; background: #f1f5f9; padding: .2rem .55rem; border-radius: 6px; color: #334155; }
+        .btn-action { padding: .3rem .7rem; font-size: .8rem; border-radius: 7px; font-weight: 500; }
+        .badge { font-size: .73rem; padding: .38em .65em; border-radius: 6px; }
+        .alert { border-radius: 10px; border: none; font-size: .875rem; }
+        .empty-state { padding: 4rem 2rem; text-align: center; background: #fff; border-radius: 14px; border: 1px dashed #cbd5e1; }
+        @@media (max-width: 991px) { .sidebar { display: none; } .main-content { margin-left: 0; } }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar d-flex flex-column">
+    <div class="sidebar-brand">
+        <div class="logo-icon"><i class="bi bi-truck-front-fill text-white"></i></div>
+        <span>DeliveryOps</span>
+    </div>
+    <div class="pt-2">
+        <div class="nav-section">Main</div>
+        <a class="nav-link-s" href="/Delivery/LiveMap"><i class="bi bi-map-fill"></i> Live Map</a>
+        <a class="nav-link-s @(current == "All" ? "active" : "")" href="/Delivery"><i class="bi bi-grid-1x2"></i> All Deliveries</a>
+        <a class="nav-link-s @(current == "Pending" ? "active" : "")" href="/Delivery?status=Pending"><i class="bi bi-hourglass-split"></i> Pending</a>
+        <a class="nav-link-s @(current == "Shipped" ? "active" : "")" href="/Delivery?status=Shipped"><i class="bi bi-truck"></i> In Transit</a>
+        <a class="nav-link-s @(current == "OutForDelivery" ? "active" : "")" href="/Delivery?status=OutForDelivery"><i class="bi bi-bicycle"></i> Out for Delivery</a>
+        <a class="nav-link-s @(current == "Delivered" ? "active" : "")" href="/Delivery?status=Delivered"><i class="bi bi-check-circle"></i> Delivered</a>
+        <div class="nav-section">Reports</div>
+        <a class="nav-link-s @(current == "Failed" ? "active" : "")" href="/Delivery?status=Failed"><i class="bi bi-x-circle"></i> Failed</a>
+    </div>
+</nav>
+
+<!-- Main -->
+<div class="main-content">
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div>
+            <h5 class="fw-bold mb-0">Delivery Management</h5>
+            <small class="text-muted">@Model.Count deliveries found</small>
+        </div>
+        <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>@DateTime.Now.ToString("dd MMM yyyy")</span>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        @{
+            var stats = new[]
+            {
+                ("Total",           Model.Count,                                    "bi-box2-heart",       "#eff6ff", "#2563eb"),
+                ("Pending",         Model.Count(d => d.Status == "Pending"),        "bi-hourglass-split",  "#faf5ff", "#7c3aed"),
+                ("In Transit",      Model.Count(d => d.Status == "Shipped"),        "bi-truck",            "#fefce8", "#ca8a04"),
+                ("Out for Delivery",Model.Count(d => d.Status == "OutForDelivery"), "bi-bicycle",          "#fff7ed", "#ea580c"),
+                ("Delivered",       Model.Count(d => d.Status == "Delivered"),      "bi-check-circle-fill","#f0fdf4", "#16a34a"),
+                ("Failed",          Model.Count(d => d.Status == "Failed"),         "bi-x-circle-fill",    "#fef2f2", "#dc2626"),
+            };
+        }
+        @foreach (var (label, count, icon, bg, color) in stats)
+        {
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="stat-icon" style="background:@bg; color:@color;">
+                            <i class="bi @icon"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-5">@count</div>
+                            <div class="text-muted small">@label</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Alerts -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-check-circle-fill"></i> @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["Error"]
+        </div>
+    }
+
+    <!-- Filter Pills -->
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <span class="text-muted small me-1"><i class="bi bi-funnel me-1"></i>Filter:</span>
+        @foreach (var s in statuses)
+        {
+            <a href="/Delivery@(s == "All" ? "" : "?status=" + s)"
+               class="filter-pill @(current == s ? "active" : "")">
+                @if (s != "All") { <i class="bi @StatusIcon(s)"></i> }
+                @StatusLabel(s)
+            </a>
+        }
+    </div>
+
+    <!-- Table -->
+    @if (Model.Any())
+    {
+        <div class="delivery-table">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Tracking ID</th>
+                        <th>Recipient</th>
+                        <th>City</th>
+                        <th>Order</th>
+                        <th>Status</th>
+                        <th>Est. Delivery</th>
+                        <th>Agent</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model)
+                    {
+                        var cityPart = d.FullAddress.Split(',').ElementAtOrDefault(2)?.Trim() ?? "";
+                        <tr>
+                            <td><span class="tracking-chip">@d.TrackingId</span></td>
+                            <td>
+                                <div class="fw-semibold small">@d.RecipientName</div>
+                                <div class="text-muted" style="font-size:.75rem;">@d.ContactPhone</div>
+                            </td>
+                            <td><small class="text-muted">@cityPart</small></td>
+                            <td><span class="tracking-chip">#@d.OrderId</span></td>
+                            <td>
+                                <span class="badge @StatusBadge(d.Status)">
+                                    <i class="bi @StatusIcon(d.Status) me-1"></i>@StatusLabel(d.Status)
+                                </span>
+                            </td>
+                            <td>
+                                <small class="@(d.EstimatedDeliveryDate < DateTime.Now && d.Status != "Delivered" ? "text-danger fw-semibold" : "text-muted")">
+                                    @d.EstimatedDeliveryDate.ToString("dd MMM yyyy")
+                                </small>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    @(string.IsNullOrEmpty(d.DeliveryAgentName) ? "—" : d.DeliveryAgentName)
+                                </small>
+                            </td>
+                            <td class="text-end">
+                                <a href="/Delivery/Details/@d.Id" class="btn btn-outline-primary btn-action me-1">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="/Delivery/Tracking/@d.TrackingId" class="btn btn-outline-secondary btn-action">
+                                    <i class="bi bi-geo-alt"></i> Track
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="bi bi-inbox text-muted" style="font-size:3rem;"></i>
+            <h6 class="mt-3 text-muted">No deliveries found for "@StatusLabel(current)"</h6>
+            <a href="/Delivery" class="btn btn-outline-primary btn-sm mt-2">Show All</a>
+        </div>
+    }
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
