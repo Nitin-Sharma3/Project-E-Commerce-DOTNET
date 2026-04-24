@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — JAVLN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg javln-nav">
+        <div class="container">
+            <a class="navbar-brand javln-logo" href="/">JAVLN</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav ms-auto align-items-center gap-2">
+                    @if (User.Identity!.IsAuthenticated)
+                    {
+                        <li class="nav-item">
+                            <span class="nav-badge">@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
+                        </li>
+                        @if (User.IsInRole("Customer"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Customer"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                        }
+                        @if (User.IsInRole("Seller"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Seller"><i class="bi bi-shop"></i> Seller Panel</a></li>
+                        }
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Admin"><i class="bi bi-shield-check"></i> Admin</a></li>
+                        }
+                        <li class="nav-item">
+                            <a class="btn btn-outline-danger btn-sm" asp-controller="Account" asp-action="Logout">Logout</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="Login">Login</a></li>
+                        <li class="nav-item"><a class="btn javln-btn-primary btn-sm" asp-controller="Account" asp-action="Register">Get Started</a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer class="javln-footer">
+        <div class="container text-center">
+            <p class="mb-0">© 2026 <strong>JAVLN</strong> — Next-Gen Commerce</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

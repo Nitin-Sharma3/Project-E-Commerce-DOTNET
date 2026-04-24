@@ -1,0 +1,33 @@
+﻿@model JAVLN.Web.Models.OtpViewModel
+@{
+    ViewData["Title"] = "Verify OTP";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="otp-icon">📬</div>
+            <h2>Verify Your Email</h2>
+            <p>Enter the 6-digit OTP sent to <strong>@Model.Email</strong></p>
+        </div>
+
+        <form asp-action="VerifyOtp" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+            <input type="hidden" asp-for="Email" />
+
+            <div class="otp-input-group mb-4">
+                <input asp-for="Otp" class="form-control otp-input text-center"
+                       placeholder="● ● ● ● ● ●" maxlength="6" />
+                <span asp-validation-for="Otp" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn javln-btn-primary w-100 btn-lg">
+                <i class="bi bi-shield-check"></i> Verify OTP
+            </button>
+        </form>
+
+        <div class="auth-links">
+            <a asp-action="Login">Back to Login</a>
+        </div>
+    </div>
+</div>
