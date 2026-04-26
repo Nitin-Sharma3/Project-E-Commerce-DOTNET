@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RazorpayApi.Data;
 using RazorpayApi.Models;
 using RazorpayApi.Services;
 
@@ -9,11 +10,16 @@ namespace RazorpayApi.Controllers;
 public class ChargeController : ControllerBase
 {
     private readonly IRazorpayService _razorpayService;
+    private readonly PaymentDbContext _dbContext;
     private readonly ILogger<ChargeController> _logger;
 
-    public ChargeController(IRazorpayService razorpayService, ILogger<ChargeController> logger)
+    public ChargeController(
+        IRazorpayService razorpayService,
+        PaymentDbContext dbContext,
+        ILogger<ChargeController> logger)
     {
         _razorpayService = razorpayService;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -33,6 +39,18 @@ public class ChargeController : ControllerBase
         try
         {
             var response = _razorpayService.VerifyAndCharge(request);
+            var transaction = _dbContext.PaymentTransactions
+                .FirstOrDefault(t => t.RazorpayOrderId == request.RazorpayOrderId);
+
+            if (transaction != null)
+            {
+                transaction.RazorpayPaymentId = request.RazorpayPaymentId;
+                transaction.RazorpaySignature = request.RazorpaySignature;
+                transaction.PaidAt = DateTime.UtcNow;
+                transaction.Status = response.Success ? "Paid" : "Failed";
+                _dbContext.SaveChanges();
+            }
+
             _logger.LogInformation("Payment verified: {PaymentId}", response.PaymentId);
             return Ok(response);
         }

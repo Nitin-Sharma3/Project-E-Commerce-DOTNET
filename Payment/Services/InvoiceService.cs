@@ -98,7 +98,10 @@ public class InvoiceService : IInvoiceService
         title.Alignment = Element.ALIGN_CENTER;
         doc.Add(title);
 
-        var invoiceNum = new Paragraph($"Invoice #: {request.OrderId}",
+        var invoiceNumber = string.IsNullOrWhiteSpace(request.ExternalOrderId)
+            ? request.OrderId
+            : request.ExternalOrderId;
+        var invoiceNum = new Paragraph($"Invoice #: {invoiceNumber}",
             new Font(Font.FontFamily.HELVETICA, 10, Font.NORMAL));
         invoiceNum.Alignment = Element.ALIGN_CENTER;
         doc.Add(invoiceNum);
@@ -170,6 +173,10 @@ public class InvoiceService : IInvoiceService
             invoiceDate = invoiceDate.ToLocalTime();
         }
         AddDetailRow(detailsTable, "Invoice Date:", invoiceDate.ToString("dd-MMM-yyyy"));
+        if (!string.IsNullOrWhiteSpace(request.ExternalOrderId))
+        {
+            AddDetailRow(detailsTable, "External Order ID:", request.ExternalOrderId);
+        }
         AddDetailRow(detailsTable, "Order ID:", request.OrderId);
         AddDetailRow(detailsTable, "Payment Method:", request.PaymentMethod);
 

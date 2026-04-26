@@ -3,6 +3,7 @@
     public class InvoiceRequest
     {
         public string OrderId { get; set; } = string.Empty;
+        public string? ExternalOrderId { get; set; }
         public string PaymentId { get; set; } = string.Empty;
         public List<OrderItem> Items { get; set; } = new();
         public decimal Subtotal { get; set; }

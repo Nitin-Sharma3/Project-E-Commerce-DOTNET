@@ -20,6 +20,13 @@
                 <th style="text-align: left; padding: 12px; color: #9ca3af;">Order ID</th>
                 <td style="text-align: left; padding: 12px; color: #e5e7eb;"><code style="background: #020617; padding: 6px 12px; border-radius: 6px;">@Model.OrderId</code></td>
             </tr>
+            @if (!string.IsNullOrWhiteSpace(Model.ExternalOrderId))
+            {
+                <tr style="border-bottom: 1px solid #111827;">
+                    <th style="text-align: left; padding: 12px; color: #9ca3af;">External Order ID</th>
+                    <td style="text-align: left; padding: 12px; color: #e5e7eb;"><code style="background: #020617; padding: 6px 12px; border-radius: 6px;">@Model.ExternalOrderId</code></td>
+                </tr>
+            }
             <tr style="border-bottom: 1px solid #111827;">
                 <th style="text-align: left; padding: 12px; color: #9ca3af;">Amount</th>
                 <td style="text-align: left; padding: 12px; color: #e5e7eb;">₹@Model.Amount.ToString("N2")</td>
@@ -75,6 +82,14 @@ else
         const orderId = "@Model.OrderId";
         const paymentId = "@Model.PaymentId";
         const amount = @Model.Amount;
+        const externalOrderId = "@Model.ExternalOrderId";
+        const customerName = "@Model.CustomerName";
+        const customerEmail = "@Model.CustomerEmail";
+        const customerPhone = "@Model.CustomerPhone";
+        const customerAddress = "@Model.CustomerAddress";
+        const customerCity = "@Model.CustomerCity";
+        const customerState = "@Model.CustomerState";
+        const customerPostalCode = "@Model.CustomerPostalCode";
 
         function downloadInvoice() {
             openInvoiceModal();
@@ -107,10 +122,10 @@ else
                             </div>
                             <div>
                                 <h3 style="color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 10px;">BILL TO</h3>
-                                <p style="margin: 5px 0;"><strong>Daft Punk</strong></p>
-                                <p style="margin: 5px 0;">Customer Address</p>
-                                <p style="margin: 5px 0;">Your City, Your State 123456</p>
-                                <p style="margin: 5px 0;">📧 customer@merchant.com</p>
+                                <p style="margin: 5px 0;"><strong>${customerName || ""}</strong></p>
+                                <p style="margin: 5px 0;">${customerAddress || ""}</p>
+                                <p style="margin: 5px 0;">${customerCity || ""}, ${customerState || ""} ${customerPostalCode || ""}</p>
+                                <p style="margin: 5px 0;">📧 ${customerEmail || ""}</p>
                             </div>
                         </div>
 
@@ -158,6 +173,7 @@ else
                             <h4 style="color: #333;">Payment Details</h4>
                             <p style="margin: 5px 0;"><strong>Payment ID:</strong> ${paymentId}</p>
                             <p style="margin: 5px 0;"><strong>Order ID:</strong> ${orderId}</p>
+                            ${externalOrderId ? `<p style="margin: 5px 0;"><strong>External Order ID:</strong> ${externalOrderId}</p>` : ""}
                             <p style="margin: 5px 0;"><strong>Payment Method:</strong> Razorpay</p>
                             <p style="margin: 5px 0;"><strong>Transaction Date:</strong> ${new Date().toLocaleString()}</p>
                         </div>
@@ -185,6 +201,7 @@ else
                 // Prepare invoice request with stored payment data
                 const invoiceRequest = {
                     orderId: orderId,
+                    externalOrderId: externalOrderId || null,
                     paymentId: paymentId,
                     items: [
                         {
@@ -212,13 +229,13 @@ else
                         gstNumber: "18AABCT1234H1Z0"
                     },
                     customerDetails: {
-                        name: "Daft Punk",
-                        email: "customer@merchant.com",
-                        phone: "",
-                        address: "Customer Address",
-                        city: "Your City",
-                        state: "Your State",
-                        postalCode: "123456"
+                        name: customerName || "",
+                        email: customerEmail || "",
+                        phone: customerPhone || "",
+                        address: customerAddress || "",
+                        city: customerCity || "",
+                        state: customerState || "",
+                        postalCode: customerPostalCode || ""
                     },
                     termsAndConditions: "Thank you for your purchase. Please keep this invoice for your records."
                 };

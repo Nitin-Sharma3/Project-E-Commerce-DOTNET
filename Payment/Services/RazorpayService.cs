@@ -100,10 +100,18 @@ public class RazorpayService : IRazorpayService
             { "receipt", request.Receipt },
             { "payment_capture", 1 }
         };
+        if (!string.IsNullOrWhiteSpace(request.ExternalOrderId))
+        {
+            input["notes"] = new Dictionary<string, object>
+            {
+                { "external_order_id", request.ExternalOrderId }
+            };
+        }
         Order order = _client.Order.Create(input);
         return new CreateOrderResponse
         {
             OrderId = order["id"].ToString()!,
+            ExternalOrderId = request.ExternalOrderId,
             Amount = request.Amount,
             Currency = request.Currency,
             Receipt = request.Receipt

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RazorpayApi.Data;
 using RazorpayApi.Models;
 using RazorpayApi.Services;
 
@@ -9,10 +10,19 @@ public class ChargeModel : PageModel
 {
     private readonly IRazorpayService _razorpayService;
     private readonly ILogger<ChargeModel> _logger;
+    private readonly PaymentDbContext _dbContext;
 
     public bool Success { get; private set; }
     public string PaymentId { get; private set; } = string.Empty;
     public string OrderId { get; private set; } = string.Empty;
+    public string ExternalOrderId { get; private set; } = string.Empty;
+    public string CustomerName { get; private set; } = string.Empty;
+    public string CustomerEmail { get; private set; } = string.Empty;
+    public string CustomerPhone { get; private set; } = string.Empty;
+    public string CustomerAddress { get; private set; } = string.Empty;
+    public string CustomerCity { get; private set; } = string.Empty;
+    public string CustomerState { get; private set; } = string.Empty;
+    public string CustomerPostalCode { get; private set; } = string.Empty;
     public decimal Amount { get; private set; }
     public string Currency { get; private set; } = "INR";
     public DateTime TransactionDate { get; private set; } = DateTime.Now;
@@ -25,10 +35,11 @@ public class ChargeModel : PageModel
     public decimal TaxAmount { get; private set; }
     public decimal DiscountAmount { get; private set; }
 
-    public ChargeModel(IRazorpayService razorpayService, ILogger<ChargeModel> logger)
+    public ChargeModel(IRazorpayService razorpayService, ILogger<ChargeModel> logger, PaymentDbContext dbContext)
     {
         _razorpayService = razorpayService;
         _logger = logger;
+        _dbContext = dbContext;
     }
 
     // GET /Charge — not used directly; redirect to Payment
@@ -44,6 +55,17 @@ public class ChargeModel : PageModel
         PaymentId = razorpayPaymentId;
         OrderId = razorpayOrderId;
         TransactionDate = DateTime.Now;
+
+        var transaction = _dbContext.PaymentTransactions
+            .FirstOrDefault(t => t.RazorpayOrderId == razorpayOrderId);
+        ExternalOrderId = transaction?.OrderId.ToString() ?? string.Empty;
+        CustomerName = transaction?.CustomerName ?? string.Empty;
+        CustomerEmail = transaction?.CustomerEmail ?? string.Empty;
+        CustomerPhone = transaction?.CustomerPhone ?? string.Empty;
+        CustomerAddress = transaction?.CustomerAddress ?? string.Empty;
+        CustomerCity = transaction?.CustomerCity ?? string.Empty;
+        CustomerState = transaction?.CustomerState ?? string.Empty;
+        CustomerPostalCode = transaction?.CustomerPostalCode ?? string.Empty;
 
         try
         {
