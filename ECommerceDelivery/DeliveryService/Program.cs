@@ -1,28 +1,46 @@
 using DeliveryService.Data;
+using DeliveryService.HttpClients;
 using DeliveryService.Repositories;
 using DeliveryService.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// EF InMemory
+// ── Database — SQL Server ─────────────────────────────────────────────────
 builder.Services.AddDbContext<DeliveryDbContext>(o =>
-    o.UseInMemoryDatabase("DeliveryDb"));
+    o.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// DI
+// ── Repositories ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IDeliveryRepository, DeliveryRepository>();
-builder.Services.AddScoped<IDeliveryService, DeliveryServices>();
 
-// ── OrderAPI HttpClient (CORRECTED port 5238) ─────────────────────────────
-builder.Services.AddHttpClient("OrderService", c =>
+// ── Services ──────────────────────────────────────────────────────────────
+builder.Services.AddScoped<IDeliveryService, DeliveryService.Services.DeliveryService>();
+
+// ── Typed HttpClients ─────────────────────────────────────────────────────
+
+// OrderAPI: GET api/users/{userId}/orders/{orderId}
+//           PATCH api/orders/{orderId}/status
+builder.Services.AddHttpClient<IOrderClient, OrderClient>(c =>
 {
     c.BaseAddress = new Uri(builder.Configuration["OrderAPI:BaseUrl"]
-                   ?? "http://localhost:5238/");
+                   ?? throw new Exception("OrderAPI:BaseUrl not configured"));
     c.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
+// ProductAPI: GET api/product/{id}
+builder.Services.AddHttpClient<IProductClient, ProductClient>(c =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["ProductAPI:BaseUrl"]
+                   ?? throw new Exception("ProductAPI:BaseUrl not configured"));
+    c.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
+// ── Swagger ───────────────────────────────────────────────────────────────
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Delivery Service API", Version = "v1" });
 });
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
@@ -30,10 +48,11 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 
 var app = builder.Build();
 
+// ── Auto migration on startup ─────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DeliveryDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 app.UseSwagger();

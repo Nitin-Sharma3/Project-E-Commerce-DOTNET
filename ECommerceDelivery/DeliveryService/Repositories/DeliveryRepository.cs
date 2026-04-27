@@ -12,11 +12,15 @@ namespace DeliveryService.Repositories
                 .Include(d => d.StatusHistory.OrderBy(h => h.Timestamp));
 
         public async Task<IEnumerable<Delivery>> GetAllAsync() =>
-            await WithIncludes().OrderByDescending(d => d.CreatedAt).ToListAsync();
+            await WithIncludes()
+                .OrderByDescending(d => d.CreatedAt)
+                .ToListAsync();
 
         public async Task<IEnumerable<Delivery>> GetByUserIdAsync(int userId) =>
-            await WithIncludes().Where(d => d.UserId == userId)
-                .OrderByDescending(d => d.CreatedAt).ToListAsync();
+            await WithIncludes()
+                .Where(d => d.UserId == userId)
+                .OrderByDescending(d => d.CreatedAt)
+                .ToListAsync();
 
         public async Task<Delivery?> GetByIdAsync(int id) =>
             await WithIncludes().FirstOrDefaultAsync(d => d.Id == id);
@@ -34,23 +38,17 @@ namespace DeliveryService.Repositories
             return delivery;
         }
 
-        //public async Task<Delivery> UpdateAsync(Delivery delivery)
-        //{
-        //    db.Deliveries.Update(delivery);
-        //    await db.SaveChangesAsync();
-        //    return delivery;
-        //}
-        public async Task UpdateAsync(Delivery delivery)
+        public async Task<Delivery> UpdateAsync(Delivery delivery)
         {
             db.Deliveries.Update(delivery);
             await db.SaveChangesAsync();
+            return delivery;
         }
+
         public async Task AddStatusHistoryAsync(DeliveryStatusHistory history)
         {
             db.StatusHistories.Add(history);
             await db.SaveChangesAsync();
         }
-
-        public async Task SaveChangesAsync() => await db.SaveChangesAsync();
     }
 }

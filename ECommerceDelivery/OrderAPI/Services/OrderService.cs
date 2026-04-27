@@ -113,7 +113,8 @@ namespace OrderAPI.Services
 
             // 5. Clear cart after successful order
             await _cartClient.ClearCartAsync(userId);
-            _ = Task.Run(() => _deliveryClient.CreateDeliveryAsync(created.Id));
+            // ── Notify DeliveryAPI (fire and forget) ──────────────────────────
+            _ = Task.Run(() => _deliveryClient.CreateDeliveryAsync(created.Id, userId));
             //await _deliveryClient.CreateDeliveryAsync(created.Id);
 
             return MapToResponse(created);

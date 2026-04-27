@@ -1,34 +1,27 @@
 ﻿namespace OrderAPI.HttpClients
 {
-    public class DeliveryClient : IDeliveryClient
+    public class DeliveryClient(HttpClient http, ILogger<DeliveryClient> logger)
+    : IDeliveryClient
     {
-        private readonly HttpClient _http;
-        private readonly ILogger<DeliveryClient> _logger;
-
-        public DeliveryClient(HttpClient http, ILogger<DeliveryClient> logger)
-        {
-            _http = http;
-            _logger = logger;
-        }
-
-        public async Task CreateDeliveryAsync(int orderId)
+        public async Task CreateDeliveryAsync(int orderId, int userId)
         {
             try
             {
-                // Delivery API fetches full order details itself
-                var resp = await _http.PostAsync(
-                    $"api/delivery/create-from-order/{orderId}", null);
+                // POST api/delivery/create-from-order
+                var resp = await http.PostAsJsonAsync(
+                    "api/delivery/create-from-order",
+                    new { OrderId = orderId, UserId = userId });
 
                 if (!resp.IsSuccessStatusCode)
-                    _logger.LogWarning("Delivery creation failed for Order {Id}: {Code}",
+                    logger.LogWarning("Delivery creation failed for Order {Id}: {Code}",
                         orderId, resp.StatusCode);
                 else
-                    _logger.LogInformation("Delivery triggered for Order {Id}", orderId);
+                    logger.LogInformation("Delivery created for Order {Id}", orderId);
             }
             catch (Exception ex)
             {
-                // Never fail the order if delivery notification fails
-                _logger.LogError(ex, "DeliveryClient failed for Order {Id}", orderId);
+                // Never fail the order
+                logger.LogError(ex, "DeliveryClient failed for Order {Id}", orderId);
             }
         }
     }

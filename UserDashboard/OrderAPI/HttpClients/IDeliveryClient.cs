@@ -2,6 +2,6 @@
 {
     public interface IDeliveryClient
     {
-        Task CreateDeliveryAsync(int orderId);
+        Task CreateDeliveryAsync(int orderId, int userId);
     }
 }

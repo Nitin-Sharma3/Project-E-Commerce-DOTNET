@@ -30,11 +30,16 @@ namespace OrderAPI
                 client.BaseAddress = new Uri(builder.Configuration["AddressAPI:BaseUrl"]
                                              ?? throw new Exception("AddressAPI:BaseUrl not configured"));
             });
-            // ── HttpClient → DeliveryAPI ───────────────────────────────
+            //// ── HttpClient → DeliveryAPI ───────────────────────────────
+            //builder.Services.AddHttpClient<IDeliveryClient, DeliveryClient>(client =>
+            //{
+            //    client.BaseAddress = new Uri(builder.Configuration["DeliveryAPI:BaseUrl"]
+            //                                 ?? throw new Exception("DeliveryAPI:BaseUrl not configured"));
+            //});
             builder.Services.AddHttpClient<IDeliveryClient, DeliveryClient>(client =>
             {
                 client.BaseAddress = new Uri(builder.Configuration["DeliveryAPI:BaseUrl"]
-                                             ?? throw new Exception("DeliveryAPI:BaseUrl not configured"));
+                                     ?? "http://localhost:5016/");
             });
 
             // ── Repositories ─────────────────────────────────────────
