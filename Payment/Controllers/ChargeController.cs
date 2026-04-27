@@ -269,4 +269,121 @@ public class ChargeController : ControllerBase
             });
         }
     }
+
+    [HttpPost("refund-requests")]
+    [ProducesResponseType(typeof(RefundRequestRecord), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult CreateRefundRequest([FromBody] CreateRefundRequestDto request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "Request body is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RazorpayPaymentId) || string.IsNullOrWhiteSpace(request.RazorpayOrderId))
+        {
+            return BadRequest(new { error = "RazorpayPaymentId and RazorpayOrderId are required." });
+        }
+
+        if (request.Amount <= 0)
+        {
+            return BadRequest(new { error = "Amount must be greater than 0." });
+        }
+
+        var record = new RefundRequestRecord
+        {
+            UserId = request.UserId,
+            OrderId = request.OrderId,
+            RazorpayOrderId = request.RazorpayOrderId,
+            RazorpayPaymentId = request.RazorpayPaymentId,
+            Amount = request.Amount,
+            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "INR" : request.Currency,
+            Reason = request.Reason,
+            Status = "Pending",
+            RequestedAt = DateTime.UtcNow
+        };
+
+        _dbContext.RefundRequests.Add(record);
+        _dbContext.SaveChanges();
+
+        return CreatedAtAction(nameof(GetRefundRequestById), new { refundRequestId = record.Id }, record);
+    }
+
+    [HttpGet("refund-requests")]
+    [ProducesResponseType(typeof(List<RefundRequestRecord>), StatusCodes.Status200OK)]
+    public IActionResult GetRefundRequests([FromQuery] string? status)
+    {
+        var query = _dbContext.RefundRequests.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(r => r.Status == status);
+        }
+
+        var results = query.OrderByDescending(r => r.RequestedAt).ToList();
+        return Ok(results);
+    }
+
+    [HttpGet("refund-requests/{refundRequestId:int}")]
+    [ProducesResponseType(typeof(RefundRequestRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetRefundRequestById(int refundRequestId)
+    {
+        var record = _dbContext.RefundRequests.FirstOrDefault(r => r.Id == refundRequestId);
+        if (record == null)
+        {
+            return NotFound(new { error = "Refund request not found." });
+        }
+
+        return Ok(record);
+    }
+
+    [HttpPost("refund-requests/process")]
+    [ProducesResponseType(typeof(RefundRequestRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult ProcessRefundRequest([FromBody] ProcessRefundRequestDto request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "Request body is required." });
+        }
+
+        var record = _dbContext.RefundRequests.FirstOrDefault(r => r.Id == request.RefundRequestId);
+        if (record == null)
+        {
+            return NotFound(new { error = "Refund request not found." });
+        }
+
+        if (!string.Equals(record.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "Only pending refund requests can be processed." });
+        }
+
+        record.SellerNotes = request.SellerNotes;
+        record.ProcessedAt = DateTime.UtcNow;
+
+        if (!request.Approve)
+        {
+            record.Status = "Rejected";
+            _dbContext.SaveChanges();
+            return Ok(record);
+        }
+
+        var refundAmount = request.Amount.HasValue && request.Amount.Value > 0 ? request.Amount.Value : record.Amount;
+        var refundResponse = _razorpayService.RefundPartial(record.RazorpayPaymentId, (int)Math.Round(refundAmount), record.Reason);
+
+        if (!refundResponse.Success)
+        {
+            record.Status = "Failed";
+            _dbContext.SaveChanges();
+            return StatusCode(500, new { error = refundResponse.ErrorMessage ?? "Refund failed." });
+        }
+
+        record.Status = "Approved";
+        record.RazorpayRefundId = refundResponse.RefundId;
+        _dbContext.SaveChanges();
+
+        return Ok(record);
+    }
 }

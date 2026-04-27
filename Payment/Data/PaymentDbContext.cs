@@ -11,4 +11,5 @@ public class PaymentDbContext : DbContext
     }
 
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<RefundRequestRecord> RefundRequests => Set<RefundRequestRecord>();
 }
