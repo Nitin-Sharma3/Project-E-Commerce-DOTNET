@@ -1,0 +1,96 @@
+@page
+@model RazorpayApi.Pages.RefundRequestsModel
+@{
+    ViewData["Title"] = "Refund Requests";
+}
+
+<div style="width: 100%; max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <h1 style="text-align: center; margin-bottom: 40px;">🧾 Refund Requests</h1>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(34, 197, 94, 0.1)); border-left: 4px solid #10b981; padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #10b981;">
+            <strong>✅ Success!</strong> @Model.SuccessMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1)); border-left: 4px solid #ef4444; padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #ef4444;">
+            ❌ @Model.ErrorMessage
+        </div>
+    }
+
+    <div style="background: #0f172a; border: 1px solid #111827; border-radius: 12px; padding: 24px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid #111827; text-align: left;">
+                    <th style="padding: 12px; color: #9ca3af;">Request</th>
+                    <th style="padding: 12px; color: #9ca3af;">Payment</th>
+                    <th style="padding: 12px; color: #9ca3af;">Amount</th>
+                    <th style="padding: 12px; color: #9ca3af;">Status</th>
+                    <th style="padding: 12px; color: #9ca3af;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Requests.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" style="padding: 16px; color: #94a3b8;">No refund requests found.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var request in Model.Requests)
+                    {
+                        <tr style="border-bottom: 1px solid #111827;">
+                            <td style="padding: 12px; color: #e5e7eb;">
+                                <div><strong>#@request.Id</strong></div>
+                                <div style="color: #94a3b8; font-size: 12px;">Order: @request.OrderId</div>
+                                <div style="color: #94a3b8; font-size: 12px;">User: @request.UserId</div>
+                            </td>
+                            <td style="padding: 12px; color: #e5e7eb;">
+                                <div style="font-size: 12px;">Razorpay Payment:</div>
+                                <code style="background: #020617; padding: 4px 8px; border-radius: 6px; font-size: 11px;">@request.RazorpayPaymentId</code>
+                                <div style="font-size: 12px; margin-top: 6px;">Razorpay Order:</div>
+                                <code style="background: #020617; padding: 4px 8px; border-radius: 6px; font-size: 11px;">@request.RazorpayOrderId</code>
+                            </td>
+                            <td style="padding: 12px; color: #e5e7eb;">
+                                ₹@request.Amount.ToString("N2")
+                                <div style="color: #94a3b8; font-size: 12px;">@request.Currency</div>
+                            </td>
+                            <td style="padding: 12px;">
+                                <span style="background: @(request.Status == "Pending" ? "#f59e0b" : request.Status == "Approved" ? "#10b981" : request.Status == "Rejected" ? "#ef4444" : "#6b7280"); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                    @request.Status
+                                </span>
+                                @if (!string.IsNullOrEmpty(request.RazorpayRefundId))
+                                {
+                                    <div style="margin-top: 6px; font-size: 12px; color: #94a3b8;">Refund: @request.RazorpayRefundId</div>
+                                }
+                            </td>
+                            <td style="padding: 12px;">
+                                @if (request.Status == "Pending")
+                                {
+                                    <form method="post" asp-page-handler="Process" style="display: grid; gap: 8px;">
+                                        <input type="hidden" name="RefundRequestId" value="@request.Id" />
+                                        <select name="Approve" style="padding: 6px; border-radius: 6px; background: #020617; color: #e5e7eb; border: 1px solid #111827;">
+                                            <option value="true">Approve</option>
+                                            <option value="false">Reject</option>
+                                        </select>
+                                        <input type="number" name="Amount" step="0.01" placeholder="Amount (optional)" style="padding: 6px; border-radius: 6px; background: #020617; color: #e5e7eb; border: 1px solid #111827;" />
+                                        <input type="text" name="SellerNotes" placeholder="Notes" style="padding: 6px; border-radius: 6px; background: #020617; color: #e5e7eb; border: 1px solid #111827;" />
+                                        <button type="submit" style="background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer;">Process</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span style="color: #94a3b8; font-size: 12px;">Processed</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
