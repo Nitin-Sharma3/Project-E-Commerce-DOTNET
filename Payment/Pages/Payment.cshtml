@@ -17,29 +17,29 @@
     <form id="paymentForm" style="background: #0f172a; padding: 30px; border-radius: 16px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: left;">
     <div style="margin-bottom: 20px;">
         <label for="amount" style="display: block; font-size: 13px; color: #9ca3af; margin-bottom: 6px;">Amount (₹):</label>
-        <input type="number" id="amount" placeholder="e.g., 50000" value="1000" min="1" step="1" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
+        <input type="number" id="amount" placeholder="e.g., 50000" value="@Model.AmountRupees" min="1" step="1" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
     </div>
 
     <div style="margin-bottom: 20px;">
         <label for="customerName" style="display: block; font-size: 13px; color: #9ca3af; margin-bottom: 6px;">Your Name:</label>
-        <input type="text" id="customerName" placeholder="John Doe" value="" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
+        <input type="text" id="customerName" placeholder="John Doe" value="@Model.CustomerName" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
     </div>
 
     <div style="margin-bottom: 20px;">
         <label for="customerEmail" style="display: block; font-size: 13px; color: #9ca3af; margin-bottom: 6px;">Your Email:</label>
-        <input type="email" id="customerEmail" placeholder="john@example.com" value="" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
+        <input type="email" id="customerEmail" placeholder="john@example.com" value="@Model.CustomerEmail" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
     </div>
 
     <div style="margin-bottom: 20px;">
         <label for="customerPhone" style="display: block; font-size: 13px; color: #9ca3af; margin-bottom: 6px;">Phone Number:</label>
-        <input type="tel" id="customerPhone" placeholder="+91-9999999999" value="" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
+        <input type="tel" id="customerPhone" placeholder="+91-9999999999" value="@Model.CustomerPhone" style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: #020617; color: #ffffff; font-size: 14px;" required autocomplete="off">
     </div>
 
     <button type="button" class="btn" onclick="proceedToPayment()" style="width: 100%; padding: 14px; margin-top: 20px; background: linear-gradient(135deg, #7c3aed, #6366f1); color: white; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease; will-change: opacity; transform: translateZ(0);">
-        Pay Now (₹<span id="displayAmount">1000</span>)
+        Pay Now (₹<span id="displayAmount">@Model.AmountRupees</span>)
     </button>
     <p style="color: #9ca3af; margin-top: 12px; font-size: 0.9rem;">
-        You will be charged: ₹<span id="chargeAmount">1000</span>
+        You will be charged: ₹<span id="chargeAmount">@Model.AmountRupees</span>
     </p>
     </form>
 </div>
@@ -56,7 +56,7 @@
 @section Scripts {
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
-        const API_BASE = "https://localhost:7000/api";
+        const API_BASE = "/api";
 
         // Function to clear all Razorpay and form-related cache
         function clearRazorpayCache() {
@@ -80,18 +80,17 @@
 
         // Function to reset all form fields
         function resetFormFields() {
-            document.getElementById("amount").value = "1000";
+            document.getElementById("amount").value = "100";
             document.getElementById("customerPhone").value = "";
             document.getElementById("customerName").value = "";
             document.getElementById("customerEmail").value = "";
-            document.getElementById("displayAmount").textContent = "1000";
-            document.getElementById("chargeAmount").textContent = "1000";
+            document.getElementById("displayAmount").textContent = "100";
+            document.getElementById("chargeAmount").textContent = "100";
         }
 
-        // Wrapper to clear both cache and form
+        // Wrapper to clear Razorpay-related cache only
         function clearAllCache() {
             clearRazorpayCache();
-            resetFormFields();
         }
 
         // Update display amount when user changes it
@@ -101,13 +100,25 @@
         document.getElementById("chargeAmount").textContent = amount.toFixed(0);
         });
 
-        // Aggressive cache and form clearing on load
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        function applyPrefill() {
+            document.getElementById("displayAmount").textContent = document.getElementById("amount").value;
+            document.getElementById("chargeAmount").textContent = document.getElementById("amount").value;
+        }
+
+        // Aggressive cache clearing on load
         window.addEventListener("load", function() {
             clearAllCache();
+            applyPrefill();
         });
 
         document.addEventListener("DOMContentLoaded", function() {
             clearAllCache();
+            applyPrefill();
             setTimeout(clearAllCache, 100);
             setTimeout(clearAllCache, 500);
         });
@@ -137,14 +148,26 @@
         // Convert amount to paise (₹1 = 100 paise)
         const amountInPaise = Math.round(amount * 100);
 
+        const userId = getQueryParam("userId");
+        const orderId = getQueryParam("orderId");
+        const addressId = getQueryParam("addressId");
+
+        if (!userId || !orderId || !addressId) {
+        alert("Missing userId, orderId, or addressId in the query string");
+        return;
+        }
+
         // STEP 1: Create order via API with ACTUAL AMOUNT
-        const orderResponse = await fetch("?handler=CreateOrder", {
+        const orderResponse = await fetch("/api/payment/create-order-from-apis", {
         method: "POST",
         headers: {
         "Content-Type": "application/json",
         "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
         },
         body: JSON.stringify({
+        userId: parseInt(userId, 10),
+        orderId: parseInt(orderId, 10),
+        addressId: parseInt(addressId, 10),
         amount: amountInPaise,  // ACTUAL AMOUNT in paise
         currency: "INR",
         receipt: "receipt_" + Date.now()
@@ -157,9 +180,9 @@
         }
 
         const orderData = await orderResponse.json();
-        const orderId = orderData.orderId;
+        const razorpayOrderId = orderData.orderId;
 
-        console.log("Order created:", orderId, "Amount: ₹" + amount);
+        console.log("Order created:", razorpayOrderId, "Amount: ₹" + amount);
 
         // STEP 2: Open Razorpay checkout with ACTUAL AMOUNT and CURRENT USER'S PHONE
         const options = {
@@ -168,7 +191,7 @@
         currency: "INR",
         name: "Your Company",
         description: "Payment",
-        order_id: orderId,
+        order_id: razorpayOrderId,
         prefill: {
         name: customerName,
         email: customerEmail,
@@ -178,7 +201,7 @@
         handler: function (response) {
         // STEP 3: Payment successful - submit hidden form to /Charge
         document.getElementById("razorpay_payment_id").value = response.razorpay_payment_id;
-        document.getElementById("razorpay_order_id").value = orderId;
+        document.getElementById("razorpay_order_id").value = razorpayOrderId;
         document.getElementById("razorpay_signature").value = response.razorpay_signature;
         document.getElementById("razorpay_amount").value = amount;
         document.getElementById("razorpayForm").submit();

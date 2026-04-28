@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using RazorpayApi.Data;
 using RazorpayApi.Models;
 using RazorpayApi.Services;
 
@@ -10,6 +12,36 @@ builder.Services.Configure<RazorpaySettings>(
 // ── Services ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IRazorpayService, RazorpayService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("CartAPI", (serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["CartAPI:BaseUrl"];
+    if (!string.IsNullOrWhiteSpace(baseUrl))
+    {
+        client.BaseAddress = new Uri(baseUrl);
+    }
+});
+builder.Services.AddHttpClient("OrderAPI", (serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["OrderAPI:BaseUrl"];
+    if (!string.IsNullOrWhiteSpace(baseUrl))
+    {
+        client.BaseAddress = new Uri(baseUrl);
+    }
+});
+builder.Services.AddHttpClient("AddressAPI", (serviceProvider, client) =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["AddressAPI:BaseUrl"];
+    if (!string.IsNullOrWhiteSpace(baseUrl))
+    {
+        client.BaseAddress = new Uri(baseUrl);
+    }
+});
+builder.Services.AddDbContext<PaymentDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ApplicationDbContext")));
 
 // ── Session Configuration (✅ ADDED) ─────────────────────────────────────────
 builder.Services.AddDistributedMemoryCache();
