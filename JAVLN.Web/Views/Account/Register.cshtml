@@ -1,0 +1,49 @@
+﻿@model JAVLN.Web.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Join JAVLN</h2>
+            <p>Create your free account today</p>
+        </div>
+
+        <form asp-action="Register" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Name" class="form-control" placeholder="name" />
+                <label asp-for="Name"><i class="bi bi-person"></i> Full Name</label>
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Email" class="form-control" placeholder="email" />
+                <label asp-for="Email"><i class="bi bi-envelope"></i> Email</label>
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Phone" class="form-control" placeholder="phone" />
+                <label asp-for="Phone"><i class="bi bi-phone"></i> Phone</label>
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
+
+            <div class="form-floating mb-4">
+                <input asp-for="Password" type="password" class="form-control" placeholder="password" />
+                <label asp-for="Password"><i class="bi bi-lock"></i> Password</label>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn javln-btn-primary w-100 btn-lg">
+                <i class="bi bi-person-plus"></i> Create Account
+            </button>
+        </form>
+
+        <div class="auth-links">
+            Already have an account? <a asp-action="Login">Sign in</a>
+        </div>
+    </div>
+</div> 
