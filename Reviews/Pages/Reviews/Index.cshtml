@@ -1,0 +1,260 @@
+﻿@page
+@model Reviews.Pages.Reviews.IndexModel
+@{
+    ViewData["Title"] = "Product Reviews";
+}
+
+<div class="container pt-2">
+    <h1 class="page-title">Product Reviews</h1>
+
+    @if (Model.Summary != null)
+    {
+        <div class="card p-4 mb-4 shadow-sm">
+            <div class="row">
+                <div class="col-md-3 text-center border-end">
+                    <h2>@Model.Summary.AverageRating.ToString("0.0")</h2>
+                    <div class="stars">
+                        @{
+                            var rounded = (int)Math.Round(Model.Summary.AverageRating);
+                        }
+                        @for (int i = 1; i <= rounded; i++) { <span class="star full">★</span> }
+                        @for (int i = rounded + 1; i <= 5; i++) { <span class="star empty">★</span> }
+                    </div>
+                    <p>@Model.Summary.TotalReviews reviews</p>
+                </div>
+
+                <div class="col-md-9">
+                    @for (int i = 5; i >= 1; i--)
+                    {
+                        var key = i.ToString();
+                        var count = Model.Summary.RatingDistribution.ContainsKey(key)
+                        ? Model.Summary.RatingDistribution[key] : 0;
+
+                        var total = Model.Summary.TotalReviews;
+                        var percent = total == 0 ? 0 : (count * 100.0 / total);
+
+                        <a href="?productId=@Model.ProductId&rating=@i&sort=@Model.SortBy&page=@Model.CurrentPage">
+                            <div class="rating-row">
+                                <span class="star-label">@i ★</span>
+
+                                <div class="bar-container">
+                                    <div class="bar-fill" style="width:@percent%"></div>
+                                </div>
+
+                                <span class="count">@count</span>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+<div class="d-flex justify-content-end mb-3">
+
+    <select class="form-select w-auto"
+            asp-for="SortBy"
+            onchange="onSortChange(this.value)">
+
+        <option value="latest">Latest</option>
+        <option value="highest">Highest Rated</option>
+        <option value="lowest">Lowest Rated</option>
+        <option value="helpful">Most Liked</option>
+
+    </select>
+
+</div>
+
+<script>
+function onSortChange(sort) {
+
+    const url = new URL(window.location.href);
+
+    url.searchParams.set("sort", sort);
+
+    // preserve params
+    url.searchParams.set("productId", "@Model.ProductId");
+    url.searchParams.set("page", "@Model.CurrentPage");
+
+    // ✅ FIXED RAZOR CONTEXT ISSUE
+    const rating = '@(Request.Query["rating"])';
+    if (rating && rating !== "") {
+        url.searchParams.set("rating", rating);
+    }
+
+    window.location.href = url.toString();
+}
+</script>
+
+    <!-- 📸 MEDIA GALLERY -->
+    <div class="card mb-4 p-3">
+        <h5>Customer Photos & Videos</h5>
+
+        <div class="media-gallery">
+            @foreach (var review in Model.Reviews)
+            {
+                if (review.Media != null)
+                {
+                    foreach (var media in review.Media)
+                    {
+                        if (media.Type == "image")
+                        {
+                            <img src="@media.Url" onclick="openImage('@media.Url')" />
+                        }
+                        else
+                        {
+                            <video onclick="this.requestFullscreen()">
+                                <source src="@media.Url" />
+                            </video>
+                        }
+                    }
+                }
+            }
+        </div>
+    </div>
+
+    <!-- REVIEWS -->
+    @foreach (var review in Model.Reviews)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+
+                <h5>@review.UserName</h5>
+
+                <div>
+                    @for (int i = 1; i <= review.Rating; i++) { <span class="star full">★</span> }
+                    @for (int i = review.Rating + 1; i <= 5; i++) { <span class="star empty">★</span> }
+                </div>
+
+                <p>@review.ReviewText</p>
+
+                <!-- 🎞️ FIXED CAROUSEL -->
+                @if (review.Media != null && review.Media.Count > 0)
+                {
+                    <div id="carousel-@review.Id" class="carousel slide mb-3" data-bs-ride="carousel">
+                        <div class="carousel-inner">
+
+                            @{
+                                var index = 0;
+                            }
+
+                            @foreach (var media in review.Media)
+                            {
+                                <div class="carousel-item @(index == 0 ? "active" : "")">
+                                    @if (media.Type == "image")
+                                    {
+                                        <img src="@media.Url" class="d-block w-100 review-img" />
+                                    }
+                                    else
+                                    {
+                                        <video controls class="w-100 review-img">
+                                            <source src="@media.Url" />
+                                        </video>
+                                    }
+                                </div>
+                                index++;
+                            }
+                        </div>
+
+                        <!-- WORKING BUTTONS -->
+                        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-@review.Id" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+
+                        <button class="carousel-control-next" type="button" data-bs-target="#carousel-@review.Id" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    </div>
+                }
+
+                <button class="btn btn-sm btn-outline-danger"
+                        onclick="likeReview('@review.Id', this)">
+                    ❤️ <span>@review.LikeCount</span>
+                </button>
+
+            </div>
+        </div>
+    }
+</div>
+
+<!-- IMAGE MODAL -->
+<div id="imageModal" class="image-modal" onclick="closeImage()">
+    <img id="modalImage" />
+</div>
+
+<script>
+async function likeReview(reviewId, btn) {
+    const res = await fetch(`/api/review/${reviewId}/like`, { method: 'POST' });
+    const data = await res.json();
+    btn.querySelector("span").innerText = data.likeCount;
+}
+
+function openImage(src) {
+    document.getElementById("modalImage").src = src;
+    document.getElementById("imageModal").style.display = "flex";
+}
+function closeImage() {
+    document.getElementById("imageModal").style.display = "none";
+}
+</script>
+
+<style>
+.star.full { color: gold }
+.star.empty { color: lightgray }
+
+/* Rating bars */
+.rating-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.star-label { width: 40px; color: #2b6cb0; }
+.bar-container {
+    flex: 1;
+    height: 8px;
+    background: #ddd;
+    border-radius: 5px;
+}
+.bar-fill {
+    height: 100%;
+    background: gold;
+}
+.count { width: 20px; text-align: right; }
+
+/* Smaller carousel */
+.review-img {
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Gallery */
+.media-gallery {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+}
+.media-gallery img,
+.media-gallery video {
+    height: 100px;
+    width: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Modal */
+.image-modal {
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.8);
+    justify-content:center;
+    align-items:center;
+}
+.image-modal img {
+    max-width:90%;
+    max-height:90%;
+}
+</style>
