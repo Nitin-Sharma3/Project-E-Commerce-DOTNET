@@ -19,15 +19,13 @@ namespace OrderAPI.DTOs
 
     public class PlaceOrderDto
     {
-        [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "A valid AddressId is required.")]
-        public int AddressId { get; set; }   // user picks from their saved addresses
+        
+        public int AddressId { get; set; }  
     }
 
     public class UpdateOrderStatusDto
     {
-        [Required]
-        public string Status { get; set; } = string.Empty; // "Confirmed", "Shipped", "Delivered", "Cancelled"
+        public string Status { get; set; } = string.Empty; 
     }
 
     // ── Outbound ─────────────────────────────────────────────

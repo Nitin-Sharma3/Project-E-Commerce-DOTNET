@@ -1,178 +1,171 @@
-﻿using OrderAPI.DTOs;
+﻿using AutoMapper;
+using FluentValidation;
+using OrderAPI.Common;
+
+using OrderAPI.DTOs;
 using OrderAPI.HttpClients;
 using OrderAPI.Models;
 using OrderAPI.Repositories;
-using OrderAPI.Services;
-namespace OrderAPI.Services
+
+using Serilog;
+using ValidationException = OrderAPI.Common.ValidationException;
+
+namespace OrderAPI.Services;
+
+public class OrderService : IOrderService
 {
-    
+    private readonly IOrderRepository _orderRepository;
+    private readonly ICartClient _cartClient;
+    private readonly IAddressClient _addressClient;
+    private readonly IMapper _mapper;
+    private readonly IValidator<PlaceOrderDto> _placeValidator;
+    private readonly IValidator<UpdateOrderStatusDto> _statusValidator;
 
-    public class OrderService : IOrderService
+    public OrderService(
+        IOrderRepository orderRepository,
+        ICartClient cartClient,
+        IAddressClient addressClient,
+        IMapper mapper,
+        IValidator<PlaceOrderDto> placeValidator,
+        IValidator<UpdateOrderStatusDto> statusValidator)
     {
-        private readonly IOrderRepository _orderRepository;
-        private readonly ICartClient _cartClient;
-        private readonly IAddressClient _addressClient;
-        private readonly IDeliveryClient _deliveryClient;
-
-        public OrderService(
-            IOrderRepository orderRepository,
-            ICartClient cartClient,
-            IAddressClient addressClient,
-            IDeliveryClient deliveryClient)
-        {
-            _orderRepository = orderRepository;
-            _cartClient = cartClient;
-            _addressClient = addressClient;
-            _deliveryClient = deliveryClient;
-        }
-
-        // ── Mapping helpers ───────────────────────────────────
-
-        private static OrderResponseDto MapToResponse(Order order) => new()
-        {
-            Id = order.Id,
-            UserId = order.UserId,
-            OrderDate = order.OrderDate,
-            Status = order.Status.ToString(),
-            TotalAmount = order.TotalAmount,
-            ShippingAddress = new SnapshotAddressDto
-            {
-                FullName = order.ShippingAddress.FullName,
-                Phone = order.ShippingAddress.Phone,
-                AddressLine1 = order.ShippingAddress.AddressLine1,
-                AddressLine2 = order.ShippingAddress.AddressLine2,
-                City = order.ShippingAddress.City,
-                State = order.ShippingAddress.State,
-                PostalCode = order.ShippingAddress.PostalCode,
-                Country = order.ShippingAddress.Country
-            },
-            Items = order.OrderItems.Select(oi => new OrderItemResponseDto
-            {
-                Id = oi.Id,
-                ProductId = oi.ProductId,
-                ProductName = oi.ProductName,
-                Quantity = oi.Quantity,
-                UnitPrice = oi.UnitPrice,
-                Subtotal = oi.Subtotal
-            }).ToList()
-        };
-
-        private static OrderSummaryDto MapToSummary(Order order) => new()
-        {
-            Id = order.Id,
-            OrderDate = order.OrderDate,
-            Status = order.Status.ToString(),
-            TotalAmount = order.TotalAmount,
-            TotalItems = order.OrderItems.Sum(oi => oi.Quantity)
-        };
-
-        // ── Business Logic ────────────────────────────────────
-
-        public async Task<OrderResponseDto> PlaceOrderAsync(int userId, PlaceOrderDto dto)
-        {
-            // 1. Validate address belongs to this user via Address API
-            var address = await _addressClient.GetAddressAsync(userId, dto.AddressId)
-                          ?? throw new KeyNotFoundException(
-                                 $"Address {dto.AddressId} not found or does not belong to this user.");
-
-            // 2. Fetch cart from Cart API
-            var cart = await _cartClient.GetCartAsync(userId);
-
-            if (cart is null || cart.Items.Count == 0)
-                throw new InvalidOperationException("Cannot place an order with an empty cart.");
-
-            // 3. Snapshot cart items (prices locked at order time)
-            var orderItems = cart.Items.Select(ci => new OrderItem
-            {
-                ProductId = ci.ProductId,
-                ProductName = $"Product #{ci.ProductId}",
-                Quantity = ci.Quantity,
-                UnitPrice = ci.UnitPrice
-            }).ToList();
-
-            // 4. Snapshot address fields into order (not a FK — historical record)
-            var order = new Order
-            {
-                UserId = userId,
-                TotalAmount = cart.TotalAmount,
-                ShippingAddress = new ShippingAddress
-                {
-                    FullName = address.FullName,
-                    Phone = address.Phone,
-                    AddressLine1 = address.AddressLine1,
-                    AddressLine2 = address.AddressLine2,
-                    City = address.City,
-                    State = address.State,
-                    PostalCode = address.PostalCode,
-                    Country = address.Country
-                },
-                OrderItems = orderItems
-            };
-
-            var created = await _orderRepository.CreateAsync(order);
-
-            // 5. Clear cart after successful order
-            await _cartClient.ClearCartAsync(userId);
-            // ── Notify DeliveryAPI (fire and forget) ──────────────────────────
-            _ = Task.Run(() => _deliveryClient.CreateDeliveryAsync(created.Id, userId));
-            //await _deliveryClient.CreateDeliveryAsync(created.Id);
-
-            return MapToResponse(created);
-        }
-
-        public async Task<OrderResponseDto> GetOrderAsync(int userId, int orderId)
-        {
-            var order = await _orderRepository.GetByIdAndUserAsync(orderId, userId)
-                        ?? throw new KeyNotFoundException($"Order {orderId} not found.");
-
-            return MapToResponse(order);
-        }
-
-        public async Task<IEnumerable<OrderSummaryDto>> GetUserOrdersAsync(int userId)
-        {
-            var orders = await _orderRepository.GetByUserIdAsync(userId);
-            return orders.Select(MapToSummary);
-        }
-
-        public async Task<OrderResponseDto> UpdateOrderStatusAsync(int orderId, UpdateOrderStatusDto dto)
-        {
-            var order = await _orderRepository.GetByIdAsync(orderId)
-                        ?? throw new KeyNotFoundException($"Order {orderId} not found.");
-
-            if (!Enum.TryParse<OrderStatus>(dto.Status, ignoreCase: true, out var newStatus))
-                throw new ArgumentException($"Invalid status '{dto.Status}'. Valid values: Confirmed, Shipped, Delivered, Cancelled.");
-
-            if (order.Status == OrderStatus.Cancelled)
-                throw new InvalidOperationException("Cannot update a cancelled order.");
-
-            if (order.Status == OrderStatus.Delivered)
-                throw new InvalidOperationException("Cannot update a delivered order.");
-
-            if (newStatus == OrderStatus.Pending)
-                throw new InvalidOperationException("Cannot revert an order back to Pending.");
-
-            order.Status = newStatus;
-            await _orderRepository.UpdateAsync(order);
-
-            return MapToResponse(order);
-        }
-
-        public async Task<OrderResponseDto> CancelOrderAsync(int userId, int orderId)
-        {
-            var order = await _orderRepository.GetByIdAndUserAsync(orderId, userId)
-                        ?? throw new KeyNotFoundException($"Order {orderId} not found.");
-
-            if (order.Status is OrderStatus.Shipped or OrderStatus.Delivered)
-                throw new InvalidOperationException($"Cannot cancel an order that is already {order.Status}.");
-
-            if (order.Status == OrderStatus.Cancelled)
-                throw new InvalidOperationException("Order is already cancelled.");
-
-            order.Status = OrderStatus.Cancelled;
-            await _orderRepository.UpdateAsync(order);
-
-            return MapToResponse(order);
-        }
+        _orderRepository = orderRepository;
+        _cartClient = cartClient;
+        _addressClient = addressClient;
+        _mapper = mapper;
+        _placeValidator = placeValidator;
+        _statusValidator = statusValidator;
     }
 
+    // ─────────────────────────────────────────────────────
+    // Place Order
+    // ─────────────────────────────────────────────────────
+    public async Task<OrderResponseDto> PlaceOrderAsync(int userId, PlaceOrderDto dto)
+    {
+        // 1. FluentValidation
+        var validation = await _placeValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            throw new ValidationException(validation.Errors.Select(e => e.ErrorMessage).ToList());
+
+        Log.Information("Placing order for User {UserId} with AddressId {AddressId}", userId, dto.AddressId);
+
+        // 2. Validate address ownership via AddressAPI
+        var address = await _addressClient.GetAddressAsync(userId, dto.AddressId)
+                      ?? throw new NotFoundException($"Address {dto.AddressId} not found or does not belong to user {userId}.");
+
+        // 3. Fetch cart from CartAPI
+        var cart = await _cartClient.GetCartAsync(userId);
+        if (cart is null || cart.Items.Count == 0)
+            throw new BadRequestException("Cannot place an order with an empty cart.");
+
+        // 4. Business rule — calculated field: recompute total server-side (never trust client total)
+        var computedTotal = cart.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+        // 5. Snapshot cart items via AutoMapper
+        var orderItems = _mapper.Map<List<OrderItem>>(cart.Items);
+
+        // 6. Snapshot address via AutoMapper
+        var shippingAddress = _mapper.Map<ShippingAddress>(address);
+
+        // 7. Build order entity
+        var order = new Order
+        {
+            UserId = userId,
+            TotalAmount = computedTotal,        // server-calculated
+            ShippingAddress = shippingAddress,
+            OrderItems = orderItems
+        };
+
+        var created = await _orderRepository.CreateAsync(order);
+
+        Log.Information("Order {OrderId} created for User {UserId}. Total: {Total}",
+            created.Id, userId, computedTotal);
+
+        // 8. Clear cart post-order
+        await _cartClient.ClearCartAsync(userId);
+
+        return _mapper.Map<OrderResponseDto>(created);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Get Single Order
+    // ─────────────────────────────────────────────────────
+    public async Task<OrderResponseDto> GetOrderAsync(int userId, int orderId)
+    {
+        var order = await _orderRepository.GetByIdAndUserAsync(orderId, userId)
+                    ?? throw new NotFoundException("Order", orderId);
+
+        return _mapper.Map<OrderResponseDto>(order);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Get All Orders for User
+    // ─────────────────────────────────────────────────────
+    public async Task<IEnumerable<OrderSummaryDto>> GetUserOrdersAsync(int userId)
+    {
+        var orders = await _orderRepository.GetByUserIdAsync(userId);
+
+        // Calculated field: TotalItems summed per order in AutoMapper profile
+        return _mapper.Map<IEnumerable<OrderSummaryDto>>(orders);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Update Order Status (Admin)
+    // ─────────────────────────────────────────────────────
+    public async Task<OrderResponseDto> UpdateOrderStatusAsync(int orderId, UpdateOrderStatusDto dto)
+    {
+        // FluentValidation
+        var validation = await _statusValidator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            throw new ValidationException(validation.Errors.Select(e => e.ErrorMessage).ToList());
+
+        var order = await _orderRepository.GetByIdAsync(orderId)
+                    ?? throw new NotFoundException("Order", orderId);
+
+        if (!Enum.TryParse<OrderStatus>(dto.Status, ignoreCase: true, out var newStatus))
+            throw new BadRequestException(
+                $"Invalid status '{dto.Status}'.",
+                new List<string> { "Valid values: Confirmed, Shipped, Delivered, Cancelled." });
+
+        // ── Business rules: status transition guard ───────────
+        if (order.Status == OrderStatus.Cancelled)
+            throw new ConflictException("Cannot update a cancelled order.");
+
+        if (order.Status == OrderStatus.Delivered)
+            throw new ConflictException("Cannot update a delivered order.");
+
+        if (newStatus == OrderStatus.Pending)
+            throw new ConflictException("Cannot revert an order back to Pending.");
+
+        var previous = order.Status;
+        order.Status = newStatus;
+        await _orderRepository.UpdateAsync(order);
+
+        Log.Information("Order {OrderId} status changed: {From} → {To}", orderId, previous, newStatus);
+
+        return _mapper.Map<OrderResponseDto>(order);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Cancel Order (User)
+    // ─────────────────────────────────────────────────────
+    public async Task<OrderResponseDto> CancelOrderAsync(int userId, int orderId)
+    {
+        var order = await _orderRepository.GetByIdAndUserAsync(orderId, userId)
+                    ?? throw new NotFoundException("Order", orderId);
+
+        // ── Business rules ────────────────────────────────────
+        if (order.Status == OrderStatus.Cancelled)
+            throw new ConflictException("This order is already cancelled.");
+
+        if (order.Status is OrderStatus.Shipped or OrderStatus.Delivered)
+            throw new ConflictException($"Cannot cancel an order that is already {order.Status}.");
+
+        order.Status = OrderStatus.Cancelled;
+        await _orderRepository.UpdateAsync(order);
+
+        Log.Information("Order {OrderId} cancelled by User {UserId}", orderId, userId);
+
+        return _mapper.Map<OrderResponseDto>(order);
+    }
 }

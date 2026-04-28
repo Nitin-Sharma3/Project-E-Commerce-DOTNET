@@ -1,0 +1,565 @@
+﻿@model UserDashboardMVC.Models.HomeIndexViewModel
+@{
+    ViewData["Title"] = "JAVLN — Accessories Reimagined";
+
+    var allProducts = Model.Products is { Count: > 0 }
+        ? Model.Products
+        : new List<ProductDto>();
+
+    var categories = new[] {
+        new { Key = "Transparent Cases", Icon = "◈", Desc = "Crystal-clear precision shells" },
+        new { Key = "Glass Cases",        Icon = "◇", Desc = "Tempered glass armour"        },
+        new { Key = "Power Banks",        Icon = "⌁", Desc = "Carry unlimited energy"       },
+        new { Key = "Mobile Stands",      Icon = "⊞", Desc = "Elevate your workspace"       },
+    };
+
+    static string Fallback(string? s, string fb) =>
+        string.IsNullOrWhiteSpace(s) ? fb : s;
+}
+
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+
+
+<!-- ═══ NAV ══════════════════════════════════════════════════════ -->
+<nav id="mainNav">
+    <a href="/" class="nav-logo">CURA<span class="brand-dot"></span></a>
+
+    <ul class="nav-links">
+        <li><a href="#categories">Collections</a></li>
+        <li><a href="#products">Shop</a></li>
+        <li><a href="#">Lookbook</a></li>
+        <li><a href="#">Archive</a></li>
+    </ul>
+
+    <div class="nav-right">
+        <a href="/Cart" class="cart-btn" title="Cart">
+            ⌀
+            @if (Model.CartItemCount > 0)
+            {
+                <span class="cart-badge">@Model.CartItemCount</span>
+            }
+        </a>
+        @if (Model.UserId > 0)
+        {
+            <a href="/Account"
+                   style="font-size:11px;font-family:var(--font-head);font-weight:700;
+                color:var(--primary-60);letter-spacing:.08em;">
+                Account
+            </a>
+        }
+        else
+        {
+            <a href="/Account/Login" class="btn-primary" style="padding:10px 22px;font-size:10px;">
+                Sign In
+            </a>
+        }
+    </div>
+</nav>
+
+<!-- ═══ HERO ══════════════════════════════════════════════════════ -->
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-orb"></div>
+
+    <div class="hero-content">
+        <div class="hero-eyebrow">New Season Arrivals</div>
+        <h1 class="hero-title">
+            Crafted for<br>
+            <em>precision.</em>
+        </h1>
+        <p class="hero-sub">
+            Premium mobile accessories designed for the modern aesthetic.
+            Protection that never compromises form.
+        </p>
+        <div class="hero-actions">
+            <a href="#products" class="btn-primary">Explore Collection ↓</a>
+            <a href="#categories" class="btn-ghost">Browse Categories</a>
+        </div>
+    </div>
+        <!-- ADD THIS cloud image block -->
+  <div class="hero-image-wrap">
+  <svg class="cloud-svg" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg"
+       style="overflow:visible; --spin-duration: 8s;">
+
+    <defs>
+      <clipPath id="cloverClip" clipPathUnits="userSpaceOnUse">
+        <circle cx="150" cy="90"  r="94" />
+        <circle cx="165" cy="235" r="92" />
+        <circle cx="88"  cy="155" r="88" />
+        <circle cx="232" cy="168" r="92"/>
+      </clipPath>
+    </defs>
+
+    <g class="petals-group">
+      <circle cx="150" cy="90"  r="94" fill="rgba(212,175,55,0.08)" stroke="#D4AF37" stroke-width="2"/>
+      <circle cx="165" cy="235" r="92" fill="rgba(212,175,55,0.08)" stroke="#D4AF37" stroke-width="2"/>
+      <circle cx="88"  cy="155" r="88" fill="rgba(212,175,55,0.08)" stroke="#D4AF37" stroke-width="2"/>
+      <circle cx="232" cy="168" r="92" fill="rgba(212,175,55,0.08)" stroke="#D4AF37" stroke-width="2"/>
+
+      <g clip-path="url(#cloverClip)">
+  <g class="image-group">
+    <image href="/Images/Categories/Transparent-Orange-4.webp"
+           x="5" y="0"
+           width="330" height="330"
+           preserveAspectRatio="xMidYMid slice"/>
+  </g>
+</g>
+    </g>
+
+  </svg>
+</div>
+
+<style>
+  .cloud-svg {
+    --spin-duration: 8s;
+  }
+
+  .cloud-svg:hover .petals-group,
+  .cloud-svg:hover .image-group {
+    animation-play-state: paused;
+  }
+
+  @@keyframes rotatePetals {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(-360deg); }
+  }
+
+  @@keyframes counterRotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .petals-group {
+    transform-origin: 160px 160px;
+    animation: rotatePetals var(--spin-duration) cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .image-group {
+    transform-origin: 160px 160px;
+    animation: counterRotate var(--spin-duration) cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+</style>
+       
+    <div class="hero-scroll">
+        <div class="scroll-line"></div>
+        <span>Scroll</span>
+    </div>
+</section>
+
+<!-- ═══ MARQUEE ══════════════════════════════════════════════════ -->
+<div class="marquee-strip">
+    <div class="marquee-inner">
+        @{
+            var marqueeItems = new[] {
+                "Transparent Covers","Glass Covers","Power Banks","Mobile Stands",
+                "Transparent Covers","Glass Covers","Power Banks","Mobile Stands",
+                "Transparent Covers","Glass Covers","Power Banks","Mobile Stands",
+                "Transparent Covers","Glass Covers","Power Banks","Mobile Stands",
+            };
+        }
+        @foreach (var item in marqueeItems)
+        {
+            <span>@item</span><span class="dot">◆</span>
+        }
+    </div>
+</div>
+
+<!-- ═══ CATEGORIES ════════════════════════════════════════════════ -->
+<section id="categories" style="padding-bottom:0; background:var(--white);">
+    <div class="section-header" data-reveal>
+        <div>
+            <div class="section-label">Curated Collections</div>
+            <h2 class="section-title">Shop by Category</h2>
+        </div>
+        <a href="#products" class="view-all">View All →</a>
+    </div>
+
+    <div class="categories-grid">
+        @for (int i = 0; i < categories.Length; i++)
+        {
+            var cat = categories[i];
+            <div class="cat-card"
+                 onclick="filterByCategory('@cat.Key')"
+                 data-reveal
+                 style="transition-delay:@(i * 80)ms">
+                <div class="cat-bg cat-bg-@i"></div>
+                <div class="cat-arrow">→</div>
+                <div class="cat-info">
+                    <span class="cat-icon">@cat.Icon</span>
+                    <div class="cat-name">@cat.Key</div>
+                    <div class="cat-desc">@cat.Desc</div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- ═══ FEATURE STRIP ════════════════════════════════════════════ -->
+<div class="features" style="margin-top:2px;">
+    <div class="feature" data-reveal>
+        <div class="feature-icon">⟳</div>
+        <div class="feature-title">Free Returns</div>
+        <div class="feature-desc">30-day hassle-free returns on all orders.</div>
+    </div>
+    <div class="feature" data-reveal style="transition-delay:80ms">
+        <div class="feature-icon">◈</div>
+        <div class="feature-title">Precision Fit</div>
+        <div class="feature-desc">Engineered to exact device tolerances.</div>
+    </div>
+    <div class="feature" data-reveal style="transition-delay:160ms">
+        <div class="feature-icon">⌁</div>
+        <div class="feature-title">Fast Dispatch</div>
+        <div class="feature-desc">Ships within 24 hours, tracked delivery.</div>
+    </div>
+    <div class="feature" data-reveal style="transition-delay:240ms">
+        <div class="feature-icon">◇</div>
+        <div class="feature-title">Premium Materials</div>
+        <div class="feature-desc">Only aerospace-grade materials used.</div>
+    </div>
+</div>
+
+<!-- ═══ PRODUCTS ══════════════════════════════════════════════════ -->
+<section id="products" style="background:var(--neutral);">
+    <div class="section-header" data-reveal>
+        <div>
+            <div class="section-label">The Collection</div>
+            <h2 class="section-title">All Products</h2>
+        </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar" data-reveal>
+        <button class="filter-btn active" onclick="filterProducts(this,'All')">All</button>
+        @foreach (var cat in categories)
+        {
+            <button class="filter-btn" onclick="filterProducts(this,'@cat.Key')">@cat.Key</button>
+        }
+    </div>
+
+    <!-- Grid -->
+    <div class="products-grid" id="productsGrid">
+        @if (Model.ProductApiError)
+        {
+            <div class="api-error">
+                <div class="err-icon">◈</div>
+                <p>Unable to load products at this time.<br />Please refresh or try again later.</p>
+            </div>
+        }
+        else if (!allProducts.Any())
+        {
+            <div class="api-error">
+                <div class="err-icon">◇</div>
+                <p>No products found.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var p in allProducts)
+            {
+                var catIcon = p.Category switch
+                {
+                    "Transparent Covers" => "◈",
+                    "Glass Covers" => "◇",
+                    "Power Banks" => "⌁",
+                    "Mobile Stands" => "⊞",
+                    _ => "◆"
+                };
+
+                <div class="product-card"
+                     data-category="@p.Category"
+                     onclick="openModal(@p.Id)"
+                     data-reveal>
+                    <div class="product-img-wrap">
+                        @if (!string.IsNullOrWhiteSpace(p.ImageUrl1))
+                        {
+                            <img src="@p.ImageUrl1" alt="@p.Name" loading="lazy" />
+                        }
+                        else
+                        {
+                            <div class="product-placeholder">@catIcon</div>
+                        }
+
+                        @if (p.Stock == 0)
+                        {
+                            <span class="product-badge out">Sold Out</span>
+                        }
+                        else if (p.Stock <= 5)
+                        {
+                            <span class="product-badge">Low Stock</span>
+                        }
+                    </div>
+
+                    <div class="product-info">
+                        <div class="product-cat-tag">@p.Category</div>
+                        <div class="product-name">@Fallback(p.Name, "Untitled Product")</div>
+                        <div class="product-desc">@Fallback(p.Description, "Premium quality accessory.")</div>
+                        <div class="product-footer">
+                            <div class="product-price">
+                                <span class="currency">₹</span>@p.Price.ToString("N0")
+                            </div>
+                            @if (p.Stock > 0)
+                            {
+                                <button class="add-to-cart-btn"
+                                        onclick="addToCart(event,@p.Id,@p.Price)"
+                                        title="Add to cart">
+                                    +
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</section>
+
+<!-- ═══ NEWSLETTER ════════════════════════════════════════════════ -->
+<div class="newsletter-section" data-reveal>
+    <div class="section-label" style="text-align:center;margin-bottom:12px;">Stay Informed</div>
+    <h2 class="section-title" style="text-align:center;">
+        Stay in the <em style="font-family:var(--font-head);color:var(--tertiary-dk);font-style:italic;">Flow.</em>
+    </h2>
+    <p class="newsletter-sub">Exclusive drops, limited editions &amp; curated digital culture.</p>
+    <form class="newsletter-form" onsubmit="return false;">
+        <input type="email" placeholder="Enter your email address" />
+        <button type="submit">Subscribe</button>
+    </form>
+</div>
+
+<!-- ═══ FOOTER ════════════════════════════════════════════════════ -->
+<footer>
+    <div class="footer-top">
+        <div class="footer-brand">
+            <span class="nav-logo">CURA<span class="brand-dot"></span></span>
+            <p>
+                Premium mobile accessories curated for the modern aesthetic.
+                Every detail engineered for precision.
+            </p>
+        </div>
+        <div class="footer-col">
+            <h4>Support</h4>
+            <ul>
+                <li><a href="#">Shipping Policy</a></li>
+                <li><a href="#">Returns</a></li>
+                <li><a href="#">Warranty</a></li>
+                <li><a href="#">Sustainability</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+                <li><a href="#">Our Story</a></li>
+                <li><a href="#">Careers</a></li>
+                <li><a href="#">Contact</a></li>
+                <li><a href="#">Stores</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Follow</h4>
+            <ul>
+                <li><a href="#">Instagram</a></li>
+                <li><a href="#">Twitter / X</a></li>
+                <li><a href="#">Pinterest</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© @DateTime.Now.Year CURA. All rights reserved.</span>
+        <span>Privacy · Terms</span>
+    </div>
+</footer>
+
+<!-- ═══ PRODUCT MODAL ════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnBg(event)">
+    <div class="modal" id="productModal">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div class="modal-img" id="modalImg"><span>◈</span></div>
+        <div class="modal-body">
+            <div class="modal-cat" id="modalCat"></div>
+            <div class="modal-name" id="modalName"></div>
+            <div class="modal-price" id="modalPrice"></div>
+            <div class="modal-desc" id="modalDesc"></div>
+            <div class="modal-qty">
+                <button class="qty-btn" onclick="changeQty(-1)">−</button>
+                <div class="qty-display" id="qtyDisplay">1</div>
+                <button class="qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            <button class="btn-primary" id="modalAddBtn"
+                    onclick="addFromModal()"
+                    style="width:100%;justify-content:center;">
+                Add to Cart
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TOAST ════════════════════════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<script>
+    /* ── Product data from server ──────────────────────────── */
+    const PRODUCTS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                allProducts,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                }
+        ));
+
+    /* ── Cart badge count ──────────────────────────────────── */
+    let cartCount = @Model.CartItemCount;
+
+    /* ── Reveal on scroll ──────────────────────────────────── */
+    const revealObs = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                e.target.classList.add('visible');
+                revealObs.unobserve(e.target);
+            }
+        });
+    }, { threshold: .10, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('[data-reveal]').forEach(el => revealObs.observe(el));
+
+    /* ── Nav background on scroll ──────────────────────────── */
+    window.addEventListener('scroll', () => {
+        document.getElementById('mainNav').style.background =
+            window.scrollY > 60
+                ? 'rgba(255,255,255,0.98)'
+                : 'rgba(255,255,255,0.90)';
+    });
+
+    /* ── Filter ────────────────────────────────────────────── */
+    function filterProducts(btn, category) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterByCategory(category);
+    }
+
+    function filterByCategory(category) {
+        document.querySelectorAll('.product-card').forEach(card => {
+            const match = category === 'All' || card.dataset.category === category;
+            card.style.display = match ? '' : 'none';
+        });
+        if (category !== 'All') {
+            document.getElementById('products').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.toggle('active', b.textContent.trim() === category);
+            });
+        }
+    }
+
+    /* ── Modal ─────────────────────────────────────────────── */
+    let modalProductId = null;
+    let modalQty       = 1;
+
+    function openModal(id) {
+        const p = PRODUCTS.find(x => x.id === id);
+        if (!p) return;
+        modalProductId = id;
+        modalQty = 1;
+        document.getElementById('qtyDisplay').textContent = 1;
+        document.getElementById('modalCat').textContent   = p.category  ?? '';
+        document.getElementById('modalName').textContent  = p.name      ?? 'Product';
+        document.getElementById('modalPrice').textContent = '₹' + (p.price ?? 0).toLocaleString('en-IN');
+        document.getElementById('modalDesc').textContent  = p.description || 'Premium quality accessory.';
+
+        const imgEl = document.getElementById('modalImg');
+        if (p.imageUrl1) {
+            imgEl.innerHTML = `<img src="${p.imageUrl1}" alt="${p.name}" />`;
+        } else {
+            const icons = {
+                'Transparent Covers': '◈',
+                'Glass Covers': '◇',
+                'Power Banks': '⌁',
+                'Mobile Stands': '⊞'
+            };
+            imgEl.innerHTML = `<span style="font-size:72px;color:rgba(212,175,55,.3)">${icons[p.category] || '◆'}</span>`;
+        }
+
+        const addBtn = document.getElementById('modalAddBtn');
+        if (p.stock === 0) {
+            addBtn.textContent = 'Out of Stock';
+            addBtn.disabled    = true;
+            addBtn.style.opacity = '.45';
+        } else {
+            addBtn.textContent   = 'Add to Cart';
+            addBtn.disabled      = false;
+            addBtn.style.opacity = '1';
+        }
+
+        document.getElementById('modalOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function closeModalOnBg(e) {
+        if (e.target === document.getElementById('modalOverlay')) closeModal();
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function changeQty(delta) {
+        modalQty = Math.max(1, Math.min(99, modalQty + delta));
+        document.getElementById('qtyDisplay').textContent = modalQty;
+    }
+
+    /* ── Add to cart ────────────────────────────────────────── */
+    async function addToCart(event, productId, unitPrice) {
+        event.stopPropagation();
+        await postCart(productId, 1, unitPrice);
+    }
+
+    async function addFromModal() {
+        const p = PRODUCTS.find(x => x.id === modalProductId);
+        if (!p) return;
+        await postCart(p.id, modalQty, p.price);
+        closeModal();
+    }
+
+    async function postCart(productId, quantity, unitPrice) {
+        try {
+            const resp = await fetch('/Cart/AddItem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId, quantity, unitPrice })
+            });
+            if (resp.ok) {
+                cartCount += quantity;
+                updateCartBadge();
+                showToast('Added to cart ✓');
+            } else {
+                showToast('Could not add to cart');
+            }
+        } catch {
+            showToast('Network error — please retry');
+        }
+    }
+
+    function updateCartBadge() {
+        let badge = document.querySelector('.cart-badge');
+        if (cartCount > 0) {
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'cart-badge';
+                document.querySelector('.cart-btn').appendChild(badge);
+            }
+            badge.textContent = cartCount;
+        }
+    }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    let toastTimer;
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+    }
+</script>

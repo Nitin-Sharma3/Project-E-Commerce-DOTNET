@@ -1,6 +1,7 @@
 <Solution>
-  <Project Path="../../../OneDrive/Documents/Project-E-Commerce-DOTNET/ProductAPI/ProductAPI.csproj" />
+  <Project Path="../../../OneDrive/Documents/Project-E-Commerce-DOTNET/Seller Dashboard/ProductAPI/ProductAPI.csproj" />
   <Project Path="AddressAPI/AddressAPI.csproj" />
   <Project Path="CartAPI/CartAPI.csproj" />
   <Project Path="OrderAPI/OrderAPI.csproj" />
+  <Project Path="UserDashboardMVC/UserDashboardMVC.csproj" Id="a22b6bbd-516e-4d24-89ee-54abbce37cff" />
 </Solution>

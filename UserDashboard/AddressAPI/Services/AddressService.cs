@@ -1,7 +1,7 @@
 ﻿using AddressAPI.DTOs;
-    using AddressAPI.Models;
-    using AddressAPI.Repositories;
-    using AddressAPI.Services;
+using AddressAPI.Models;
+using AddressAPI.Repositories;
+using AddressAPI.Services;
 namespace AddressAPI.Services
 {
 
@@ -33,11 +33,9 @@ namespace AddressAPI.Services
             UpdatedAt = a.UpdatedAt
         };
 
-        // ── Helpers ───────────────────────────────────────────
-
-        /// <summary>
-        /// Demotes the current primary (if any) before assigning a new one.
-        /// </summary>
+      
+        // Demotes the current primary (if any) before assigning a new one.
+       
         private async Task DemoteCurrentPrimaryAsync(int userId)
         {
             var current = await _addressRepository.GetPrimaryAsync(userId);
@@ -48,9 +46,8 @@ namespace AddressAPI.Services
             }
         }
 
-        /// <summary>
-        /// After the primary is deleted, promotes the address with the lowest Id.
-        /// </summary>
+        // After the primary is deleted, promotes the address with the lowest Id.
+        
         private async Task PromoteNextPrimaryAsync(int userId, int deletedAddressId)
         {
             var next = await _addressRepository.GetNextBySequenceAsync(userId, deletedAddressId);
@@ -59,7 +56,7 @@ namespace AddressAPI.Services
                 next.IsPrimary = true;
                 await _addressRepository.UpdateAsync(next);
             }
-            // If no other address exists, no promotion needed
+            
         }
 
         // ── Public API ────────────────────────────────────────

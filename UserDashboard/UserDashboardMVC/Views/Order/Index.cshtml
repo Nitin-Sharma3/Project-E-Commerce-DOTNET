@@ -1,0 +1,153 @@
+﻿@model UserDashboardMVC.ViewModels.OrderListPageViewModel
+@{
+    ViewData["Title"] = "My Orders";
+    var statuses = new[] { "All", "Pending", "Confirmed", "Shipped", "Delivered", "Cancelled" };
+}
+
+<div class="ord-page">
+    <div class="ord-container">
+
+        <!-- ── BREADCRUMB ──────────────────────────────────── -->
+        <nav class="ord-breadcrumb">
+            <a href="/">Account</a>
+            <span class="bc-sep">›</span>
+            <span class="bc-current">My Orders</span>
+        </nav>
+
+        <!-- ── PAGE HEADER ─────────────────────────────────── -->
+        <div class="ord-header">
+            <div>
+                <h1 class="ord-title">My Orders</h1>
+                <p class="ord-subtitle">Track and manage your purchases.</p>
+            </div>
+            <a href="/Cart" class="btn-ord-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <path d="M16 10a4 4 0 01-8 0" />
+                </svg>
+                Shop Again
+            </a>
+        </div>
+
+        <!-- ── TOAST MESSAGES ──────────────────────────────── -->
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="ord-toast ord-toast-success">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                @Model.SuccessMessage
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="ord-toast ord-toast-error">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12" y2="16.01" /></svg>
+                @Model.ErrorMessage
+            </div>
+        }
+
+        <!-- ── STATUS FILTER TABS ───────────────────────────── -->
+        <div class="ord-tabs">
+            @foreach (var s in statuses)
+            {
+                var count = s == "All" ? Model.Orders.Count : Model.Orders.Count(o => o.Status == s);
+                <a href="/Order?filter=@s"
+                       class="ord-tab @(Model.ActiveFilter == s ? "ord-tab-active" : "")">
+                    @s
+                    @if (count > 0)
+                    {
+                        <span class="tab-count">@count</span>
+                    }
+                </a>
+            }
+        </div>
+
+        <!-- ── ORDERS LIST ─────────────────────────────────── -->
+        @if (!Model.FilteredOrders.Any())
+        {
+            <div class="ord-empty">
+                <div class="ord-empty-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                </div>
+                <h3>No @(Model.ActiveFilter == "All" ? "" : Model.ActiveFilter) orders yet</h3>
+                <p>When you place an order, it will appear here.</p>
+                <a href="/" class="btn-ord-primary">Start Shopping</a>
+            </div>
+        }
+        else
+        {
+            <div class="ord-list">
+                @foreach (var order in Model.FilteredOrders)
+                {
+                    <a href="/Order/Detail/@order.Id" class="ord-card">
+                        <!-- Left: order info -->
+                        <div class="ord-card-left">
+                            <div class="ord-card-meta">
+                                <span class="ord-num">Order #@order.Id</span>
+                                <span class="ord-date">@order.OrderDate.ToString("MMM dd, yyyy")</span>
+                            </div>
+                            <div class="ord-card-items">
+                                @order.TotalItems item@(order.TotalItems != 1 ? "s" : "")
+                            </div>
+                        </div>
+
+                        <!-- Center: status pill + tracker -->
+                        <div class="ord-card-center">
+                            <span class="status-pill status-@order.Status.ToLower()">
+                                @GetStatusDot(order.Status)
+                                @order.Status
+                            </span>
+                            <!-- Mini progress bar -->
+                            <div class="ord-progress">
+                                @{
+                                    int step = GetStep(order.Status);
+                                }
+                                @for (int i = 1; i <= 4; i++)
+                                {
+                                    <div class="prog-step @(i <= step ? "prog-done" : "") @(i == step && order.Status != "Delivered" && order.Status != "Cancelled" ? "prog-active" : "")"></div>
+                                    @if (i < 4)
+                                    {
+                                        <div class="prog-line @(i < step ? "prog-line-done" : "")"></div>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Right: total + arrow -->
+                        <div class="ord-card-right">
+                            <span class="ord-total">@order.TotalAmount.ToString("C")</span>
+                            <span class="ord-arrow">›</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        }
+
+    </div>
+</div>
+
+@functions {
+    string GetStatusDot(string status) => status switch
+    {
+        "Pending" => "●",
+        "Confirmed" => "●",
+        "Shipped" => "●",
+        "Delivered" => "●",
+        "Cancelled" => "●",
+        _ => "●"
+    };
+    int GetStep(string status) => status switch
+    {
+        "Pending" => 1,
+        "Confirmed" => 2,
+        "Shipped" => 3,
+        "Delivered" => 4,
+        "Cancelled" => 0,
+        _ => 0
+    };
+}

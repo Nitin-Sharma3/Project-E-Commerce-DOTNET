@@ -1,0 +1,199 @@
+﻿@model UserDashboardMVC.ViewModels.CartPageViewModel
+@{
+    ViewData["Title"] = "Shopping Bag";
+}
+
+<!-- ══════════════════════════════════════════════════════
+     CART PAGE
+══════════════════════════════════════════════════════ -->
+<div class="cart-page">
+    <div class="cart-container">
+
+        <!-- ── PAGE HEADER ──────────────────────────────── -->
+        <div class="cart-header">
+            <h1 class="cart-title">Shopping Bag</h1>
+            <p class="cart-subtitle">
+                You have @Model.TotalItems item@(Model.TotalItems != 1 ? "s" : "") in your curator list.
+            </p>
+        </div>
+
+        @if (!Model.Items.Any())
+        {
+            <!-- EMPTY STATE -->
+            <div class="cart-empty">
+                <div class="empty-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 01-8 0" />
+                    </svg>
+                </div>
+                <h2>Your bag is empty</h2>
+                <p>Add items to get started.</p>
+                <a href="/" class="btn-cart-primary">Continue Shopping</a>
+            </div>
+        }
+        else
+        {
+            <div class="cart-layout">
+
+                <!-- ── LEFT: ITEMS LIST ──────────────────── -->
+                <div class="cart-items">
+                    @foreach (var item in Model.Items)
+                    {
+                        <div class="cart-item">
+                            <!-- Product image -->
+                            <div class="item-img-wrap">
+                                <div class="item-img"
+                                     style="background-image:url('@item.ImageUrl')">
+                                </div>
+                            </div>
+
+                            <!-- Info -->
+                            <div class="item-details">
+                                <h3 class="item-name">@item.ProductName</h3>
+                                <p class="item-variant">@item.Variant</p>
+                            </div>
+
+                            <!-- Quantity stepper (CSS-only forms) -->
+                            <div class="item-qty">
+                                <!-- Decrease -->
+                                <form method="post" asp-action="UpdateQuantity">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="cartItemId" value="@item.Id" />
+                                    <input type="hidden" name="quantity" value="@(item.Quantity - 1)" />
+                                    <button type="submit" class="qty-btn" @(item.Quantity <= 1 ? "disabled" : "")>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                    </button>
+                                </form>
+
+                                <span class="qty-val">@item.Quantity</span>
+
+                                <!-- Increase -->
+                                <form method="post" asp-action="UpdateQuantity">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="cartItemId" value="@item.Id" />
+                                    <input type="hidden" name="quantity" value="@(item.Quantity + 1)" />
+                                    <button type="submit" class="qty-btn">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Price -->
+                            <div class="item-price">
+                                @item.UnitPrice.ToString("C")
+                            </div>
+
+                            <!-- Remove -->
+                            <form method="post" asp-action="Remove" class="item-remove-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="cartItemId" value="@item.Id" />
+                                <button type="submit" class="item-remove" title="Remove">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                        <path d="M10 11v6M14 11v6" />
+                                        <path d="M9 6V4h6v2" />
+                                    </svg>
+                                    REMOVE
+                                </button>
+                            </form>
+                        </div>
+                    }
+
+                    <!-- Continue shopping -->
+                    <div class="cart-continue">
+                        <a href="/" class="continue-link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+                            Continue Shopping
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ── RIGHT: ORDER SUMMARY ──────────────── -->
+                <div class="cart-summary">
+                    <div class="summary-box">
+                        <h2 class="summary-title">Order Summary</h2>
+
+                        <div class="summary-rows">
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <span>@Model.SubTotal.ToString("C")</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Shipping</span>
+                                <span class="muted-text">Calculated at next step</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Taxes</span>
+                                <span>@Model.Tax.ToString("C")</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-divider"></div>
+
+                        <div class="summary-total">
+                            <span>Total</span>
+                            <span class="total-amount">@Model.Total.ToString("C")</span>
+                        </div>
+
+                        <!-- Checkout button -->
+                        <a href="/Order/Checkout" class="btn-checkout">
+                            Proceed to Checkout
+                        </a>
+
+                        <!-- Secure badge -->
+                        <div class="secure-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            </svg>
+                            <span>SECURE CHECKOUT POWERED BY<br />JAVLN ENCRYPTED SYSTEMS.</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end .cart-layout -->
+        }
+
+    </div><!-- end .cart-container -->
+</div><!-- end .cart-page -->
+<!-- ══════════════════════════════════════════════════════
+     COMPLETE THE LOOK
+══════════════════════════════════════════════════════ -->
+@if (Model.SuggestedProducts.Any())
+{
+    <section class="complete-section">
+        <div class="cart-container">
+            <h2 class="complete-title">Complete the Look</h2>
+            <div class="complete-grid">
+                <!-- Featured large card -->
+                <a href="#" class="complete-card complete-card-lg">
+                    <div class="complete-img"
+                         style="background-image:url('@Model.SuggestedProducts[0].ImageUrl1')">
+                    </div>
+                    <div class="complete-card-info">
+                        <span class="complete-eyebrow">NEW ARRIVAL</span>
+                        <h3 class="complete-name">@Model.SuggestedProducts[0].Name</h3>
+                    </div>
+                </a>
+
+                <!-- Smaller cards -->
+                <div class="complete-sm-col">
+                    @foreach (var p in Model.SuggestedProducts.Skip(1).Take(2))
+                    {
+                        <a href="#" class="complete-card complete-card-sm">
+                            <div class="complete-img"
+                                 style="background-image:url('@p.ImageUrl1')">
+                            </div>
+                            <div class="complete-sm-info">
+                                <p class="complete-sm-name">@p.Name</p>
+                                <p class="complete-sm-price">@p.Price.ToString("C")</p>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+}

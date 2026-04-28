@@ -1,0 +1,220 @@
+﻿@model UserDashboardMVC.ViewModels.OrderDetailPageViewModel
+@{
+    ViewData["Title"] = $"Order #{Model.Order.Id}";
+    var o = Model.Order;
+    int step = o.Status switch
+    {
+        "Pending" => 1,
+        "Confirmed" => 2,
+        "Shipped" => 3,
+        "Delivered" => 4,
+        _ => 0
+    };
+    var steps = new[] { "Pending", "Confirmed", "Shipped", "Delivered" };
+}
+
+<div class="ord-page">
+    <div class="ord-container">
+
+        <!-- ── BREADCRUMB ──────────────────────────────────── -->
+        <nav class="ord-breadcrumb">
+            <a href="/">Account</a>
+            <span class="bc-sep">›</span>
+            <a href="/Order">My Orders</a>
+            <span class="bc-sep">›</span>
+            <span class="bc-current">Order #@o.Id</span>
+        </nav>
+
+        <!-- ── HEADER ──────────────────────────────────────── -->
+        <div class="ord-header">
+            <div>
+                <h1 class="ord-title">Order #@o.Id</h1>
+                <p class="ord-subtitle">Placed on @o.OrderDate.ToString("MMMM dd, yyyy 'at' h:mm tt")</p>
+            </div>
+            <span class="status-pill status-@o.Status.ToLower() status-pill-lg">
+                @o.Status
+            </span>
+        </div>
+
+        <!-- ── TOAST ───────────────────────────────────────── -->
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="ord-toast ord-toast-success">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                @Model.SuccessMessage
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="ord-toast ord-toast-error">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12" y2="16.01" /></svg>
+                @Model.ErrorMessage
+            </div>
+        }
+
+        <!-- ── ORDER TRACKER ───────────────────────────────── -->
+        @if (o.Status != "Cancelled")
+        {
+            <div class="ord-tracker">
+                @for (int i = 0; i < steps.Length; i++)
+                {
+                    bool done = i + 1 <= step;
+                    bool current = i + 1 == step;
+                    <div class="tracker-step">
+                        <div class="tracker-node @(done ? "tracker-done" : "") @(current ? "tracker-current" : "")">
+                            @if (done && !current)
+                            {
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12" /></svg>
+                            }
+                            else
+                            {
+                                <span>@(i + 1)</span>
+                            }
+                        </div>
+                        <span class="tracker-label @(current ? "tracker-label-active" : "")">@steps[i]</span>
+                    </div>
+                    @if (i < steps.Length - 1)
+                    {
+                        <div class="tracker-line @(i + 1 < step ? "tracker-line-done" : "")"></div>
+                    }
+                }
+            </div>
+        }
+        else
+        {
+            <div class="cancelled-banner">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                This order has been cancelled.
+            </div>
+        }
+
+        <!-- ── MAIN GRID ────────────────────────────────────── -->
+        <div class="ord-detail-grid">
+
+            <!-- LEFT COLUMN -->
+            <div class="ord-detail-left">
+
+                <!-- Order Items -->
+                <div class="ord-section">
+                    <h2 class="ord-section-title">Order Items</h2>
+                    <div class="ord-items-list">
+                        @foreach (var item in o.Items)
+                        {
+                            <div class="ord-item">
+                                <div class="ord-item-img">
+                                    <div class="ord-item-img-placeholder">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                    </div>
+                                </div>
+                                <div class="ord-item-info">
+                                    <p class="ord-item-name">@item.ProductName</p>
+                                    <p class="ord-item-meta">Product #@item.ProductId</p>
+                                    <p class="ord-item-qty">Qty: @item.Quantity &times; @item.UnitPrice.ToString("C")</p>
+                                </div>
+                                <div class="ord-item-sub">
+                                    @item.Subtotal.ToString("C")
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Shipping address -->
+                <div class="ord-section">
+                    <h2 class="ord-section-title">Shipping Address</h2>
+                    <div class="ord-address-card">
+                        <div class="addr-card-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                        </div>
+                        <div>
+                            <p class="addr-name">@o.ShippingAddress.FullName</p>
+                            <p class="addr-line">@o.ShippingAddress.AddressLine1</p>
+                            @if (!string.IsNullOrEmpty(o.ShippingAddress.AddressLine2))
+                            {
+                                <p class="addr-line">@o.ShippingAddress.AddressLine2</p>
+                            }
+                            <p class="addr-line">@o.ShippingAddress.City, @o.ShippingAddress.State @o.ShippingAddress.PostalCode</p>
+                            <p class="addr-line">@o.ShippingAddress.Country</p>
+                            <p class="addr-phone">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.0 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.29 6.29l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 15.09v1.83z" /></svg>
+                                @o.ShippingAddress.Phone
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- end left -->
+            <!-- RIGHT COLUMN: Summary -->
+            <div class="ord-detail-right">
+                <div class="ord-summary-card">
+                    <h2 class="ord-section-title">Order Summary</h2>
+
+                    <div class="ord-summary-rows">
+                        @foreach (var item in o.Items)
+                        {
+                            <div class="ord-sum-row">
+                                <span class="ord-sum-label">@item.ProductName <span class="ord-sum-qty">&times;@item.Quantity</span></span>
+                                <span>@item.Subtotal.ToString("C")</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="ord-sum-divider"></div>
+
+                    <div class="ord-sum-row">
+                        <span class="ord-sum-muted">Subtotal</span>
+                        <span>@o.TotalAmount.ToString("C")</span>
+                    </div>
+                    <div class="ord-sum-row">
+                        <span class="ord-sum-muted">Shipping</span>
+                        <span class="ord-sum-muted">Included</span>
+                    </div>
+                    <div class="ord-sum-row">
+                        <span class="ord-sum-muted">Tax</span>
+                        <span>$0.00</span>
+                    </div>
+
+                    <div class="ord-sum-divider"></div>
+
+                    <div class="ord-sum-row ord-sum-total">
+                        <span>Total</span>
+                        <span class="ord-grand-total">@o.TotalAmount.ToString("C")</span>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="ord-actions">
+                        @if (o.CanCancel)
+                        {
+                            <form method="post" asp-action="Cancel" asp-route-id="@o.Id">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="btn-cancel-order"
+                                        onclick="return confirm('Are you sure you want to cancel Order #@o.Id?')">
+                                    Cancel Order
+                                </button>
+                            </form>
+                        }
+                        <a href="/Order" class="btn-ord-ghost">← Back to Orders</a>
+                    </div>
+
+                    <!-- Order meta -->
+                    <div class="ord-meta-info">
+                        <div class="ord-meta-row">
+                            <span>Order ID</span>
+                            <span>#@o.Id</span>
+                        </div>
+                        <div class="ord-meta-row">
+                            <span>Date</span>
+                            <span>@o.OrderDate.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="ord-meta-row">
+                            <span>Status</span>
+                            <span class="status-pill status-@o.Status.ToLower() status-pill-sm">@o.Status</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end grid -->
+    </div>
+</div>

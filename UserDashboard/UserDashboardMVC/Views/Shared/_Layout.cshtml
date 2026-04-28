@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - JAVLN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+
+    @{
+        // Pre-compute ALL active states here — never inline Razor expressions in HTML attributes
+        var pageTitle = ViewData["Title"]?.ToString() ?? "";
+
+        // Cart icon active
+        var cartActive = (pageTitle == "Shopping Bag") ? "nav-icon-active" : "";
+
+        // Address menu item active
+        var addrActive = (pageTitle == "My Addresses") ? "pd-active" : "";
+
+        // Orders menu item active — matches both list page ("My Orders") and detail page ("Order #5")
+        bool isOrderPage = pageTitle == "My Orders" || pageTitle.StartsWith("Order #");
+        var orderActive = isOrderPage ? "pd-active" : "";
+    }
+
+    <header class="navbar">
+        <!-- Brand -->
+        <a href="/" class="nav-brand">
+            JAVLN<span class="brand-dot"></span>
+        </a>
+
+        <!-- Nav links -->
+        <nav class="nav-links">
+            <a href="/" class="@(pageTitle == "Home" ? "active" : "")">LAPTOPS</a>
+            <a href="#">MOBILE</a>
+            <a href="#">COLLECTIONS</a>
+            <a href="#">JOURNAL</a>
+        </nav>
+
+        <!-- Right icons -->
+        <div class="nav-actions">
+            <!-- Cart -->
+            <a href="/Address" class="nav-icon-btn @cartActive" title="Cart">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.8">
+                    <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <path d="M16 10a4 4 0 01-8 0" />
+                </svg>
+                <span class="nav-badge"></span>
+            </a>
+           
+
+            <!-- Profile dropdown — CSS-only checkbox trick -->
+            <div class="profile-wrap">
+                <input type="checkbox" id="profileToggle" class="profile-chk" />
+
+                <label for="profileToggle" class="nav-icon-btn profile-trigger" title="My Account">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="1.8">
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                </label>
+
+                <!-- Fullscreen click-away overlay -->
+                <label for="profileToggle" class="profile-overlay"></label>
+
+                <!-- Dropdown panel -->
+                <div class="profile-dropdown">
+
+                    <div class="pd-header">
+                        <div class="pd-avatar">AS</div>
+                        <div>
+                            <p class="pd-name">Abhay Sharma</p>
+                            <p class="pd-email">abhay@example.com</p>
+                        </div>
+                    </div>
+
+                    <div class="pd-divider"></div>
+
+                    <a href="/Address" class="pd-item @addrActive">
+                        <span class="pd-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                            </svg>
+                        </span>
+                        My Addresses
+                    </a>
+
+                    <a href="/Order" class="pd-item @orderActive">
+                        <span class="pd-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2">
+                                <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <path d="M16 10a4 4 0 01-8 0" />
+                            </svg>
+                        </span>
+                        My Orders
+                    </a>
+
+                    <a href="#" class="pd-item">
+                        <span class="pd-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14" />
+                            </svg>
+                        </span>
+                        Settings
+                    </a>
+
+                    <div class="pd-divider"></div>
+
+                    <a href="#" class="pd-item pd-logout">
+                        <span class="pd-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                                <polyline points="16 17 21 12 16 7" />
+                                <line x1="21" y1="12" x2="9" y2="12" />
+                            </svg>
+                        </span>
+                        Sign Out
+                    </a>
+
+                </div><!-- end .profile-dropdown -->
+            </div><!-- end .profile-wrap -->
+
+        </div><!-- end .nav-actions -->
+        <!-- Mobile hamburger -->
+        <button class="hamburger"
+                onclick="document.querySelector('.nav-links').classList.toggle('open')">
+            <span></span><span></span><span></span>
+        </button>
+
+    </header>
+
+    <main>@RenderBody()</main>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="footer-logo">JAVLN<span class="brand-dot"></span></div>
+                <p>
+                    Engineered for the modern professional who views their workspace
+                    as a sanctuary of focus and precision.
+                </p>
+            </div>
+            <div class="footer-col">
+                <h4>SHOP</h4>
+                <a href="#">Laptops</a>
+                <a href="#">Mobile</a>
+                <a href="#">Collections</a>
+                <a href="#">New Arrivals</a>
+            </div>
+            <div class="footer-col">
+                <h4>COMPANY</h4>
+                <a href="#">About</a>
+                <a href="#">Journal</a>
+                <a href="#">Careers</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer-col footer-newsletter">
+                <h4>NEWSLETTER</h4>
+                <p>Early access to launches, drops, and exclusive offers for members.</p>
+                <form class="nl-form" method="post">
+                    <input type="email" placeholder="your@email.com" />
+                    <button type="submit">&#8594;</button>
+                </form>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 JAVLN. All rights reserved.</span>
+            <div>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Shipping</a>
+                <a href="#">Returns</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

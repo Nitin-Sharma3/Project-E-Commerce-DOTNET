@@ -1,0 +1,468 @@
+﻿@model UserDashboardMVC.ViewModels.AddressPageViewModel
+@{
+    ViewData["Title"] = "My Addresses";
+    var postalSuccess = TempData["PostalSuccess"] as string;
+    var postalError = TempData["PostalError"] as string;
+    var success = TempData["Success"] as string;
+    var error = TempData["Error"] as string;
+
+    bool showAddForm = postalSuccess != null
+                    || postalError != null
+                    || !string.IsNullOrEmpty(Model.NewAddress.PostalCode)
+                    || TempData["ShowAddForm"] as string == "true";
+
+    int? editId = Model.EditAddressId;
+}
+
+<link rel="stylesheet" href="~/css/address.css" />
+
+<!-- BREADCRUMB -->
+<div class="addr-breadcrumb">
+    <div class="addr-container">
+        <nav class="breadcrumb-nav">
+            <a href="/">Account</a>
+            <span class="bc-sep">›</span>
+            <span class="bc-current">Addresses</span>
+        </nav>
+    </div>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="addr-header">
+    <div class="addr-container">
+        <h1 class="addr-title">My Addresses</h1>
+        <p class="addr-subtitle">Manage your saved delivery locations for a faster checkout experience.</p>
+    </div>
+</div>
+
+<!-- TOAST MESSAGES -->
+@if (!string.IsNullOrEmpty(success))
+{
+    <div class="addr-container">
+        <div class="toast toast-success">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" /></svg>
+            @success
+        </div>
+    </div>
+}
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="addr-container">
+        <div class="toast toast-error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12" y2="16.01" /></svg>
+            @error
+        </div>
+    </div>
+}
+
+<!-- ADDRESS GRID -->
+<section class="addr-section">
+    <div class="addr-container">
+        <div class="addr-grid">
+
+            <!-- ADD NEW CARD — idle trigger only, NO form here -->
+            <div class="addr-card addr-add-card">
+                <div class="add-card-idle">
+                    <div class="add-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </div>
+                    @* <p class="add-card-title">Add New Address</p> *@
+                    <p class="add-card-sub">Create a new shipping destination</p>
+                    <a href="#" class="add-card-btn" id="addAddressBtn">Add Address</a>
+                </div>
+            </div>
+
+            <!-- EXISTING ADDRESS CARDS -->
+            @foreach (var addr in Model.Addresses)
+            {
+                <div class="addr-card addr-saved-card @(addr.IsPrimary ? "is-primary" : "")">
+                    <div class="saved-card-header">
+                        <div class="card-badges">
+                           
+                            <p class="addr-name">@addr.FullName</p>
+                            @if (addr.IsPrimary)
+                            {
+                                <span class="badge-primary">PRIMARY</span>
+                            }
+                        </div>
+                        <a href="/Address/EditAddress/@addr.Id" class="edit-btn" title="Edit address">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                        </a>
+                    </div>
+
+                    <div class="saved-card-body">
+                       
+                        <p class="addr-line">@addr.AddressLine1</p>
+                        @if (!string.IsNullOrEmpty(addr.AddressLine2))
+                        {
+                            <p class="addr-line">@addr.AddressLine2</p>
+                        }
+                        else
+                        {
+                            <p class="addr-line addr-line-placeholder">&nbsp;</p>
+                        }
+                        <p class="addr-line">@addr.City, @addr.State @addr.PostalCode</p>
+                        <p class="addr-line">@addr.Country</p>
+                    </div>
+
+                    <div class="saved-card-footer">
+                        <span class="addr-phone">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.29 6.29l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 15.09v1.83z" />
+                            </svg>
+                            @addr.Phone
+                        </span>
+                        <div class="card-actions">
+                            @if (!addr.IsPrimary)
+                            {
+                                <form method="post" asp-action="SetPrimary" asp-route-id="@addr.Id" style="display:inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="link-btn primary-btn">Set Primary</button>
+                                </form>
+                            }
+                            <form method="post" asp-action="Delete" asp-route-id="@addr.Id" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="link-btn remove-btn"
+                                        onclick="return confirm('Remove this address?')">
+                                    Remove
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PRIVACY + FORM SECTION
+     The form panel is the ONLY place add/edit forms live.
+     No forms are nested inside other forms anywhere on this page.
+════════════════════════════════════════════════════════════════ -->
+<section class="privacy-section" id="address-form-panel">
+    <div class="addr-container">
+        <div class="privacy-inner">
+
+            <!-- Left: privacy info -->
+            <div class="privacy-content">
+                <h2 class="privacy-title">Your Privacy Matters</h2>
+                <p class="privacy-desc">We ensure your address and contact information are encrypted and only used for fulfilment. Our logistics partners receive only what is necessary to deliver your order safely.</p>
+                <div class="privacy-features">
+                    <div class="pf-item">
+                        <div class="pf-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                        </div>
+                        <div>
+                            <p class="pf-title">End-to-End Encryption</p>
+                            <p class="pf-desc">Your data is stored in secure, private containers.</p>
+                        </div>
+                    </div>
+                    <div class="pf-item">
+                        <div class="pf-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>
+                        </div>
+                        <div>
+                            <p class="pf-title">Smart Logistics</p>
+                            <p class="pf-desc">Addresses are automatically verified for shipping precision.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: form panel (add OR edit, never both) -->
+            <div class="privacy-form-panel">
+
+                @if (editId.HasValue && Model.EditAddress != null)
+                {
+                    <!-- ════ EDIT FORM ════
+                         Single flat form — no nested forms.
+                         Re-lookup button is wired via JS to the top-level
+                         editRelookupForm_N that lives OUTSIDE this section.
+                    -->
+                    <div class="form-header" style="margin-bottom:18px">
+                        <h3 class="form-title">Edit Address</h3>
+                        <a href="/Address" class="form-close" title="Cancel">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </a>
+                    </div>
+
+                    @if (postalSuccess != null)
+                    {
+                        <div class="pincode-success">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                            @postalSuccess
+                        </div>
+                    }
+                    @if (postalError != null)
+                    {
+                        <p class="field-error" style="margin-bottom:10px">@postalError</p>
+                    }
+
+                    <form method="post" asp-action="EditAddress" asp-route-id="@editId" class="addr-form" id="editMainForm">
+                        @Html.AntiForgeryToken()
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="lbl">Full Name *</label>
+                                <input asp-for="EditAddress.FullName" class="inp" placeholder="Abhay Sharma" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="lbl">Phone *</label>
+                                <input asp-for="EditAddress.Phone" class="inp" placeholder="+91 98765 43210" required />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="lbl">Address Line 1 *</label>
+                            <input asp-for="EditAddress.AddressLine1" class="inp" placeholder="House / Flat / Block No." required />
+                        </div>
+                        <div class="form-group">
+                            <label class="lbl">Address Line 2</label>
+                            <input asp-for="EditAddress.AddressLine2" class="inp" placeholder="Street, Area, Landmark (optional)" />
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="lbl">Pincode *</label>
+                                <div class="pincode-inline">
+                                    <input asp-for="EditAddress.PostalCode" class="inp" placeholder="110001"
+                                           maxlength="6" pattern="[0-9]{6}" id="editPincodeInput" required />
+                                    <!-- Re-lookup button — submits the TOP-LEVEL hidden form via JS -->
+                                    <a href="#" class="relookup-link" id="editRelookupBtn">Re-lookup</a>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="lbl">City *</label>
+                                <input asp-for="EditAddress.City" class="inp" placeholder="New Delhi" required />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="lbl">State *</label>
+                                <input asp-for="EditAddress.State" class="inp" placeholder="Delhi" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="lbl">Country</label>
+                                <input asp-for="EditAddress.Country" class="inp" />
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input asp-for="EditAddress.IsPrimary" type="checkbox" id="editIsPrimary" class="chk" />
+                            <label for="editIsPrimary" class="chk-label">Set as primary address</label>
+                        </div>
+                        <div class="form-actions">
+                            <a href="/Address" class="btn-cancel">Cancel</a>
+                            <button type="submit" class="btn-save">Update Address</button>
+                        </div>
+                    </form>
+                }
+                else if (showAddForm)
+                {
+                    <!-- ════ ADD FORM ════
+                         Step 1 (pincode lookup) and Step 2 (full form) are
+                         two SEPARATE sibling forms — never nested.
+                         Only one is shown at a time based on server state.
+                    -->
+                    <div class="form-header" style="margin-bottom:18px">
+                        <h3 class="form-title">New Address</h3>
+                        <a href="/Address" class="form-close" title="Cancel">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </a>
+                    </div>
+
+                    @if (string.IsNullOrEmpty(postalSuccess) && string.IsNullOrEmpty(Model.NewAddress.City))
+                    {
+                        <!-- Step 1: pincode lookup — standalone GET form -->
+                        <div class="pincode-step">
+                            <p class="pincode-hint">Enter your 6-digit pincode to auto-fill city &amp; state.</p>
+                            <form method="get" action="/Address/LookupPostal" class="pincode-form">
+                                <input type="hidden" name="returnFullName" value="@Model.NewAddress.FullName" />
+                                <input type="hidden" name="returnPhone" value="@Model.NewAddress.Phone" />
+                                <input type="hidden" name="returnLine1" value="@Model.NewAddress.AddressLine1" />
+                                <input type="hidden" name="returnLine2" value="@Model.NewAddress.AddressLine2" />
+                                <div class="pincode-row">
+                                    <input type="text" name="code" value="@Model.NewAddress.PostalCode"
+                                           maxlength="6" placeholder="e.g. 110001"
+                                           class="inp @(postalError != null ? "inp-error" : "")"
+                                           pattern="[0-9]{6}" required />
+                                    <button type="submit" class="btn-lookup">Lookup →</button>
+                                </div>
+                                @if (postalError != null)
+                                {
+                                    <p class="field-error">@postalError</p>
+                                }
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Step 2: full add form — standalone POST form, no children forms -->
+                        @if (postalSuccess != null)
+                        {
+                            <div class="pincode-success">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                                @postalSuccess
+                            </div>
+                        }
+
+                        <form method="post" asp-action="Add" class="addr-form" id="addMainForm">
+                            @Html.AntiForgeryToken()
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="lbl">Full Name *</label>
+                                    <input asp-for="NewAddress.FullName" class="inp" placeholder="Abhay Sharma" required />
+                                </div>
+                                <div class="form-group">
+                                    <label class="lbl">Phone *</label>
+                                    <input asp-for="NewAddress.Phone" class="inp" placeholder="+91 98765 43210" required />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="lbl">Address Line 1 *</label>
+                                <input asp-for="NewAddress.AddressLine1" class="inp" placeholder="House / Flat / Block No." required />
+                            </div>
+                            <div class="form-group">
+                                <label class="lbl">Address Line 2</label>
+                                <input asp-for="NewAddress.AddressLine2" class="inp" placeholder="Street, Area, Landmark (optional)" />
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="lbl">Pincode *</label>
+                                    <div class="pincode-inline">
+                                        <input asp-for="NewAddress.PostalCode" class="inp" placeholder="110001"
+                                               maxlength="6" pattern="[0-9]{6}" id="pincodeInput" required />
+                                        <!-- Re-lookup button — submits the TOP-LEVEL hidden form via JS -->
+                                        <a href="#" class="relookup-link" id="relookupBtn">Re-lookup</a>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="lbl">City *</label>
+                                    <input asp-for="NewAddress.City" class="inp" placeholder="New Delhi" required />
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="lbl">State *</label>
+                                    <input asp-for="NewAddress.State" class="inp" placeholder="Delhi" required />
+                                </div>
+                                <div class="form-group">
+                                    <label class="lbl">Country</label>
+                                    <input asp-for="NewAddress.Country" class="inp" value="India" />
+                                </div>
+                            </div>
+                            <div class="form-check">
+                                <input asp-for="NewAddress.IsPrimary" type="checkbox" id="isPrimaryChk" class="chk" />
+                                <label for="isPrimaryChk" class="chk-label">Set as primary address</label>
+                            </div>
+                            <div class="form-actions">
+                                <a href="/Address" class="btn-cancel">Cancel</a>
+                                <button type="submit" class="btn-save">Save Address</button>
+                            </div>
+                        </form>
+                    }
+                }
+                else
+                {
+                    <!-- Idle -->
+                    <div class="panel-idle">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <p class="panel-idle-title">Need a new address?</p>
+                        <p class="panel-idle-sub">Click <strong>Add Address</strong> above to get started.</p>
+                    </div>
+                }
+
+            </div><!-- /privacy-form-panel -->
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOP-LEVEL HIDDEN RE-LOOKUP FORMS
+     These MUST be at the root of the page, never inside any other
+     <form> element. JS populates them and calls .submit().
+════════════════════════════════════════════════════════════════ -->
+
+<form method="get" action="/Address/LookupPostal" id="relookupForm" style="display:none">
+    <input type="hidden" name="code" id="rlCode" />
+    <input type="hidden" name="returnFullName" id="rlName" />
+    <input type="hidden" name="returnPhone" id="rlPhone" />
+    <input type="hidden" name="returnLine1" id="rlLine1" />
+    <input type="hidden" name="returnLine2" id="rlLine2" />
+</form>
+
+@if (editId.HasValue)
+{
+    <form method="get" action="/Address/LookupPostal" id="editRelookupForm" style="display:none">
+        <input type="hidden" name="code" id="erlCode" />
+        <input type="hidden" name="returnFullName" id="erlName" />
+        <input type="hidden" name="returnPhone" id="erlPhone" />
+        <input type="hidden" name="returnLine1" id="erlLine1" />
+        <input type="hidden" name="returnLine2" id="erlLine2" />
+        <input type="hidden" name="editId" value="@editId" />
+    </form>
+}
+
+<!-- JAVASCRIPT -->
+<script>
+    // ── Add Address card button ──────────────────────────────
+    document.getElementById('addAddressBtn')?.addEventListener('click', function (e) {
+        e.preventDefault();
+        window.location.href = '/Address/AddAddress';
+    });
+
+    // ── Auto-scroll to panel when a form is active ───────────
+    (function () {
+        var isActive = @((showAddForm || editId.HasValue) ? "true" : "false");
+        if (isActive) {
+            var panel = document.getElementById('address-form-panel');
+            if (panel) {
+                setTimeout(function () {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 120);
+            }
+        }
+    })();
+
+    // ── New-address Re-lookup ────────────────────────────────
+    // Copies field values into the top-level hidden form and submits it.
+    document.getElementById('relookupBtn')?.addEventListener('click', function (e) {
+        e.preventDefault();
+        var rlForm = document.getElementById('relookupForm');
+        if (!rlForm) return;
+
+        document.getElementById('rlCode').value  = document.getElementById('pincodeInput')?.value || '';
+        document.getElementById('rlName').value  = document.querySelector('input[name="NewAddress.FullName"]')?.value || '';
+        document.getElementById('rlPhone').value = document.querySelector('input[name="NewAddress.Phone"]')?.value || '';
+        document.getElementById('rlLine1').value = document.querySelector('input[name="NewAddress.AddressLine1"]')?.value || '';
+        document.getElementById('rlLine2').value = document.querySelector('input[name="NewAddress.AddressLine2"]')?.value || '';
+        rlForm.submit();
+    });
+
+    // ── Edit-address Re-lookup ───────────────────────────────
+    document.getElementById('editRelookupBtn')?.addEventListener('click', function (e) {
+        e.preventDefault();
+        var erlForm = document.getElementById('editRelookupForm');
+        if (!erlForm) return;
+
+        document.getElementById('erlCode').value  = document.getElementById('editPincodeInput')?.value || '';
+        document.getElementById('erlName').value  = document.querySelector('input[name="EditAddress.FullName"]')?.value || '';
+        document.getElementById('erlPhone').value = document.querySelector('input[name="EditAddress.Phone"]')?.value || '';
+        document.getElementById('erlLine1').value = document.querySelector('input[name="EditAddress.AddressLine1"]')?.value || '';
+        document.getElementById('erlLine2').value = document.querySelector('input[name="EditAddress.AddressLine2"]')?.value || '';
+        erlForm.submit();
+    });
+</script>

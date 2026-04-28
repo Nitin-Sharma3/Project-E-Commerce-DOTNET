@@ -7,6 +7,12 @@
         public int UserId { get; set; }
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
+        public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
+
+        public string? RazorpayOrderId { get; set; }
+        public string? RazorpayPaymentId { get; set; }
+        public DateTime? PaidAt { get; set; }
+
         public decimal TotalAmount { get; set; }
 
         public ShippingAddress ShippingAddress { get; set; } = null!;
@@ -20,5 +26,12 @@
         Shipped = 2,
         Delivered = 3,
         Cancelled = 4
+    }
+    public enum PaymentStatus
+    {
+        Pending = 0,
+        Paid = 1,
+        Failed = 2,
+        Refunded = 3
     }
 }
