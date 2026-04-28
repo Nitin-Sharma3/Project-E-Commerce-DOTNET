@@ -30,106 +30,272 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Live Delivery Map</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+    <title>Live Delivery Map — DeliveryOps</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; overflow: hidden; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --sidebar-bg: #0c111d;
+            --border: rgba(255,255,255,.07);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --subtle: #475569;
+            --surface: rgba(255,255,255,.04);
+            --accent: #2563eb;
+            --radius: 10px;
+        }
+
+        body {
+            font-family: 'Geist', -apple-system, sans-serif;
+            background: var(--sidebar-bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
         .shell { display: flex; height: 100vh; }
 
-        /* ── Sidebar ── */
+        /* ══ SIDEBAR ══════════════════════════════════════════════════════════ */
         .sidebar {
-            width: 380px; min-width: 320px; background: #0f172a;
-            border-right: 1px solid rgba(255,255,255,.07);
-            display: flex; flex-direction: column; overflow: hidden;
+            width: 340px;
+            min-width: 290px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
+
+        /* Header */
         .sidebar-head {
-            padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.07);
+            padding: 1rem 1.25rem .85rem;
+            border-bottom: 1px solid var(--border);
             flex-shrink: 0;
         }
-        .brand { display: flex; align-items: center; gap: .6rem; margin-bottom: .75rem; }
-        .brand-icon { width: 32px; height: 32px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-        .brand span { font-weight: 700; font-size: .95rem; color: #f1f5f9; }
-        .back-btn { color: #475569; font-size: .78rem; text-decoration: none; display: flex; align-items: center; gap: .35rem; }
-        .back-btn:hover { color: #94a3b8; }
 
-        /* Stats row */
-        .stats-row { display: flex; gap: .5rem; padding: .75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; flex-wrap: wrap; }
-        .stat-pill { display: flex; align-items: center; gap: .3rem; background: rgba(255,255,255,.05); border-radius: 6px; padding: .25rem .6rem; font-size: .72rem; color: #94a3b8; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
-        .stat-pill:hover { border-color: rgba(255,255,255,.1); }
-        .stat-pill.active { border-color: currentColor; }
-        .stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-        .stat-count { font-weight: 700; font-size: .8rem; }
+        .brand-row {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            margin-bottom: .6rem;
+        }
+
+        .brand-mark {
+            width: 30px; height: 30px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .brand-name { font-weight: 700; font-size: .9rem; color: #f1f5f9; letter-spacing: -.01em; }
+        .brand-sub  { font-size: .68rem; color: #475569; margin-left: auto; }
+
+        .back-link {
+            color: #475569;
+            font-size: .75rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            transition: color .12s;
+        }
+
+        .back-link:hover { color: #94a3b8; }
+
+        /* Status pills row */
+        .pills-row {
+            padding: .75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+        }
+
+        .s-pill {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            background: rgba(255,255,255,.05);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: .25rem .6rem;
+            font-size: .7rem;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .s-pill:hover { border-color: rgba(255,255,255,.1); }
+        .s-pill.active { border-color: currentColor; background: rgba(255,255,255,.08); }
+        .s-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .s-count { font-weight: 700; font-size: .78rem; font-family: 'Geist Mono', monospace; }
 
         /* Search */
-        .search-wrap { padding: .75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
-        .search-input { width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: .45rem .75rem; color: #e2e8f0; font-size: .82rem; font-family: inherit; outline: none; }
-        .search-input::placeholder { color: #475569; }
-        .search-input:focus { border-color: rgba(37,99,235,.4); background: rgba(255,255,255,.07); }
+        .search-wrap {
+            padding: .65rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .search-box {
+            width: 100%;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 8px;
+            padding: .45rem .85rem .45rem 2rem;
+            color: #e2e8f0;
+            font-size: .8rem;
+            font-family: 'Geist', sans-serif;
+            outline: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: .7rem center;
+            transition: border-color .15s, background .15s;
+        }
+
+        .search-box::placeholder { color: #475569; }
+        .search-box:focus { border-color: rgba(37,99,235,.5); background-color: rgba(255,255,255,.07); }
 
         /* Delivery list */
         .delivery-list { flex: 1; overflow-y: auto; padding: .5rem; }
         .delivery-list::-webkit-scrollbar { width: 3px; }
         .delivery-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
 
-        .delivery-card {
-            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
-            border-radius: 10px; padding: .75rem; margin-bottom: .4rem;
-            cursor: pointer; transition: all .15s;
+        .d-card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: var(--radius);
+            padding: .75rem;
+            margin-bottom: .35rem;
+            cursor: pointer;
+            transition: all .15s;
         }
-        .delivery-card:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
-        .delivery-card.selected { border-color: #2563eb; background: rgba(37,99,235,.1); }
-        .delivery-card.hidden { display: none; }
 
-        .dc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .4rem; }
-        .dc-name { font-size: .82rem; font-weight: 600; color: #e2e8f0; }
-        .dc-status { font-size: .68rem; font-weight: 600; padding: .15rem .5rem; border-radius: 5px; }
-        .dc-tid { font-family: monospace; font-size: .7rem; color: #475569; margin-bottom: .3rem; }
-        .dc-addr { font-size: .72rem; color: #64748b; margin-bottom: .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dc-foot { display: flex; justify-content: space-between; align-items: center; }
+        .d-card:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
+        .d-card.selected { border-color: #2563eb; background: rgba(37,99,235,.1); }
+        .d-card.hidden { display: none; }
+
+        .dc-row1 { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .35rem; }
+        .dc-name { font-size: .82rem; font-weight: 600; color: #f1f5f9; }
+
+        .dc-badge {
+            font-size: .65rem;
+            font-weight: 600;
+            padding: .15rem .5rem;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: .25rem;
+            flex-shrink: 0;
+        }
+
+        .dc-tid {
+            font-family: 'Geist Mono', monospace;
+            font-size: .68rem;
+            color: #475569;
+            margin-bottom: .3rem;
+        }
+
+        .dc-addr {
+            font-size: .72rem;
+            color: #64748b;
+            margin-bottom: .35rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dc-footer { display: flex; justify-content: space-between; align-items: center; }
         .dc-agent { font-size: .68rem; color: #475569; }
-        .dc-eta { font-size: .68rem; }
-        .dc-overdue { color: #ef4444; font-weight: 600; }
-        .dc-ok { color: #22c55e; }
+        .dc-eta   { font-size: .68rem; }
+        .dc-eta-ok      { color: #22c55e; }
+        .dc-eta-overdue { color: #ef4444; font-weight: 600; }
 
-        /* Map */
+        /* Pending location hint */
+        .pending-hint {
+            font-size: .63rem;
+            color: #64748b;
+            font-style: italic;
+            margin-top: .2rem;
+        }
+
+        /* ══ MAP ══════════════════════════════════════════════════════════════ */
         .map-wrap { flex: 1; position: relative; }
         #map { width: 100%; height: 100%; }
 
-        /* Map overlays */
-        .map-overlay {
-            position: absolute; z-index: 1000;
-            background: rgba(15,23,42,.92); border: 1px solid rgba(255,255,255,.1);
-            border-radius: 10px; padding: .6rem .9rem; backdrop-filter: blur(10px);
-        }
-        .map-overlay.top-left { top: 1rem; left: 1rem; }
-        .map-overlay.top-right { top: 1rem; right: 1rem; }
-        .map-overlay.bottom-left { bottom: 1.5rem; left: 1rem; }
-
-        .legend-item { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; font-size: .72rem; color: #94a3b8; }
-        .legend-item:last-child { margin-bottom: 0; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-
-        /* Pulse animation for OutForDelivery */
-        @@keyframes pulse-ring {
-            0% { transform: scale(1); opacity: .8; }
-            100% { transform: scale(2.2); opacity: 0; }
-        }
-        .pulse-marker::after {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%; height: 100%; border-radius: 50%;
-            animation: pulse-ring 1.5s ease-out infinite;
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(12,17,29,.92);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: var(--radius);
+            padding: .65rem .9rem;
+            backdrop-filter: blur(12px);
         }
 
-        /* Leaflet popup dark */
-        .leaflet-popup-content-wrapper { background: #1e293b; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; color: #e2e8f0; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+        .overlay.top-left  { top: 1rem; left: 1rem; }
+        .overlay.top-right { top: 1rem; right: 1rem; }
+        .overlay.bottom-left { bottom: 1.5rem; left: 1rem; }
+
+        .ov-label {
+            font-size: .6rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: .25rem;
+        }
+
+        .ov-count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            line-height: 1;
+            font-family: 'Geist Mono', monospace;
+        }
+
+        .ov-sub { font-size: .68rem; color: #475569; margin-top: .15rem; }
+
+        .legend-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; font-size: .72rem; color: #94a3b8; }
+        .legend-row:last-child { margin-bottom: 0; }
+        .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Leaflet dark popup */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 12px;
+            color: #e2e8f0;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+        }
         .leaflet-popup-tip { background: #1e293b; }
-        .leaflet-popup-content { margin: 12px 16px; font-family: 'Plus Jakarta Sans', sans-serif; min-width: 200px; }
+        .leaflet-popup-content { margin: 12px 16px; font-family: 'Geist', sans-serif; min-width: 210px; }
         .leaflet-popup-close-button { color: #64748b !important; }
+
+        /* Pending accuracy banner */
+        .accuracy-note {
+            padding: .5rem 1.25rem;
+            background: rgba(245,158,11,.06);
+            border-bottom: 1px solid rgba(245,158,11,.12);
+            font-size: .68rem;
+            color: #d97706;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            flex-shrink: 0;
+        }
+
+        @@keyframes pulseAnim {
+            0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6), 0 3px 10px rgba(0,0,0,.4); }
+            70%  { box-shadow: 0 0 0 14px rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.4); }
+            100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.4); }
+        }
 
         @@media (max-width: 768px) {
             .shell { flex-direction: column; }
@@ -142,20 +308,33 @@
 <div class="shell">
 
     <!-- ══ SIDEBAR ══ -->
-    <div class="sidebar">
+    <aside class="sidebar">
+
         <div class="sidebar-head">
-            <div class="brand">
-                <div class="brand-icon"><i class="bi bi-truck-front-fill text-white" style="font-size:.9rem;"></i></div>
-                <span>Live Delivery Map</span>
-                <span style="margin-left:auto; font-size:.7rem; color:#475569;">@Model.Count active</span>
+            <div class="brand-row">
+                <div class="brand-mark">
+                    <i class="bi bi-truck-front-fill text-white" style="font-size:.82rem;"></i>
+                </div>
+                <span class="brand-name">Live Delivery Map</span>
+                <span class="brand-sub">@Model.Count on map</span>
             </div>
-            <a href="/Delivery" class="back-btn"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+            <a href="/Delivery" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
         </div>
 
+        @if (Model.Any(d => d.Status == "Pending"))
+        {
+            <div class="accuracy-note">
+                <i class="bi bi-info-circle-fill"></i>
+                Pending deliveries are pinned to city center (no GPS yet)
+            </div>
+        }
+
         <!-- Status filter pills -->
-        <div class="stats-row" id="filterPills">
+        <div class="pills-row" id="filterPills">
             @{
-                var statusGroups = new[]
+                var groups = new[]
                 {
                     ("All",            Model.Count,                                    "#94a3b8"),
                     ("Pending",        Model.Count(d => d.Status == "Pending"),        "#94a3b8"),
@@ -166,100 +345,111 @@
                     ("Failed",         Model.Count(d => d.Status == "Failed"),         "#ef4444"),
                 };
             }
-            @foreach (var (s, count, color) in statusGroups)
+            @foreach (var (s, cnt, color) in groups)
             {
-                <div class="stat-pill @(s == "All" ? "active" : "")"
+                <div class="s-pill @(s == "All" ? "active" : "")"
                      style="color:@color;"
                      onclick="filterByStatus('@s')">
-                    <div class="dot" style="background:@color;"></div>
+                    <div class="s-dot" style="background:@color;"></div>
                     <span>@(s == "OutForDelivery" ? "OFD" : s)</span>
-                    <span class="stat-count" style="color:@color;">@count</span>
+                    <span class="s-count" style="color:@color;">@cnt</span>
                 </div>
             }
         </div>
 
         <!-- Search -->
         <div class="search-wrap">
-            <input type="text" class="search-input" id="searchInput"
-                   placeholder="🔍  Search recipient, tracking ID, city..."
+            <input type="text" class="search-box" id="searchInput"
+                   placeholder="Search recipient, tracking ID, city..."
                    oninput="searchDeliveries(this.value)"/>
         </div>
 
-        <!-- Delivery list -->
+        <!-- Card list -->
         <div class="delivery-list" id="deliveryList">
             @foreach (var d in Model)
             {
-                <div class="delivery-card"
+                var color = StatusColor(d.Status);
+                <div class="d-card"
                      id="card-@d.DeliveryId"
                      data-status="@d.Status"
                      data-search="@d.RecipientName.ToLower() @d.TrackingId.ToLower() @d.FullAddress.ToLower()"
                      onclick="focusDelivery(@d.DeliveryId, @d.Latitude, @d.Longitude)">
-                    <div class="dc-head">
+
+                    <div class="dc-row1">
                         <div class="dc-name">@d.RecipientName</div>
-                        <span class="dc-status"
-                              style="background:@(StatusColor(d.Status))20; color:@StatusColor(d.Status); border:1px solid @(StatusColor(d.Status))40;">
+                        <span class="dc-badge"
+                              style="background:@(color)22; color:@color; border:1px solid @(color)44;">
                             @StatusEmoji(d.Status) @StatusLabel(d.Status)
                         </span>
                     </div>
-                    <div class="dc-tid">@d.TrackingId · Order #@d.OrderId</div>
-                    <div class="dc-addr"><i class="bi bi-geo-alt me-1"></i>@d.FullAddress</div>
-                    <div class="dc-foot">
-                        @* <span class="dc-agent">
-                            @if (!string.IsNullOrEmpty(d.AgentName))
-                            { <text><i class="bi bi-person me-1"></i>@d.AgentName</text> }
-                            else { <text style="color:#334155; font-style:italic;">Unassigned</text> }
-                        </span> *@
+
+                    <div class="dc-tid">@d.TrackingId &nbsp;·&nbsp; Order #@d.OrderId</div>
+                    <div class="dc-addr"><i class="bi bi-geo-alt" style="margin-right:.3rem;"></i>@d.FullAddress</div>
+
+                    <div class="dc-footer">
                         <span class="dc-agent">
                             @if (!string.IsNullOrEmpty(d.AgentName))
                             {
-                                <span><i class="bi bi-person me-1"></i>@d.AgentName</span>
+                                <text><i class="bi bi-person" style="margin-right:.25rem;"></i>@d.AgentName</text>
                             }
                             else
                             {
-                                <span style="color:#334155; font-style:italic;">Unassigned</span>
+                                <span style="font-style:italic;">Unassigned</span>
                             }
                         </span>
-                        <span class="dc-eta @(d.IsOverdue ? "dc-overdue" : "dc-ok")">
+                        <span class="dc-eta @(d.IsOverdue ? "dc-eta-overdue" : "dc-eta-ok")">
                             @if (d.IsOverdue)
-                            { <text><i class="bi bi-exclamation-triangle me-1"></i>Overdue</text> }
+                            {
+                                <text><i class="bi bi-exclamation-triangle"></i> Overdue</text>
+                            }
                             else
-                            { <text><i class="bi bi-calendar-check me-1"></i>@d.EstimatedDelivery.ToString("dd MMM")</text> }
+                            {
+                                <text><i class="bi bi-calendar-check"></i> @d.EstimatedDelivery.ToString("dd MMM")</text>
+                            }
                         </span>
                     </div>
+
+                    @if (d.Status == "Pending")
+                    {
+                        <div class="pending-hint">
+                            <i class="bi bi-building"></i> Pinned to city — GPS updates when shipped
+                        </div>
+                    }
                 </div>
             }
         </div>
-    </div>
+    </aside>
 
     <!-- ══ MAP ══ -->
     <div class="map-wrap">
         <div id="map"></div>
 
-        <!-- Top-left overlay: live count -->
-        <div class="map-overlay top-left">
-            <div style="font-size:.65rem; color:#475569; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.3rem;">Live Deliveries</div>
-            <div style="font-size:1.4rem; font-weight:700; color:#e2e8f0; line-height:1;">@Model.Count</div>
-            <div style="font-size:.7rem; color:#475569; margin-top:.1rem;">on map simultaneously</div>
+        <!-- Live count -->
+        <div class="overlay top-left">
+            <div class="ov-label">Live Deliveries</div>
+            <div class="ov-count">@Model.Count</div>
+            <div class="ov-sub">on map simultaneously</div>
         </div>
 
-        <!-- Top-right: legend -->
-        <div class="map-overlay top-right">
-            <div style="font-size:.65rem; color:#475569; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.4rem;">Legend</div>
+        <!-- Legend -->
+        <div class="overlay top-right">
+            <div class="ov-label" style="margin-bottom:.5rem;">Legend</div>
             @foreach (var (s, _, color) in new[] {
                 ("Pending","","#94a3b8"),("Packed","","#0ea5e9"),("Shipped","","#2563eb"),
                 ("OutForDelivery","","#f59e0b"),("Delivered","","#22c55e"),("Failed","","#ef4444")
             })
             {
-                <div class="legend-item">
+                <div class="legend-row">
                     <div class="legend-dot" style="background:@color;"></div>
                     @StatusLabel(s)
                 </div>
             }
         </div>
 
-        <!-- Bottom-left: hint -->
-        <div class="map-overlay bottom-left" style="font-size:.72rem; color:#475569;">
-            <i class="bi bi-hand-index me-1"></i>Click marker or card to focus · Click card again to view details
+        <!-- Hint -->
+        <div class="overlay bottom-left" style="font-size:.7rem; color:#475569;">
+            <i class="bi bi-hand-index" style="margin-right:.3rem;"></i>
+            Click marker or card to focus
         </div>
     </div>
 
@@ -268,14 +458,12 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ── Map init ──────────────────────────────────────────────────────────────
-var map = L.map('map', {
-    zoomControl: true,
-    attributionControl: true
-}).setView([@centerLat, @centerLng], 5);
+var map = L.map('map', { zoomControl: true })
+    .setView([@centerLat, @centerLng], 5);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
 }).addTo(map);
 
 // ── Status config ─────────────────────────────────────────────────────────
@@ -289,25 +477,30 @@ var statusEmoji = {
 };
 
 // ── Marker factory ────────────────────────────────────────────────────────
-function makeIcon(emoji, color, size, pulse) {
+function makeIcon(emoji, color, size, pulse, isPending) {
     size = size || 38;
+    var dotStyle = isPending
+        ? `opacity:0.7; border-style:dashed;`
+        : ``;
     var pulseStyle = pulse
-        ? `box-shadow:0 0 0 0 ${color}66; animation:pulseAnim 1.5s infinite;`
-        : `box-shadow:0 3px 10px rgba(0,0,0,.5);`;
+        ? `animation:pulseAnim 1.5s infinite;`
+        : `box-shadow:0 3px 12px rgba(0,0,0,.5);`;
+
     return L.divIcon({
         html: `<div style="
-            position:relative; width:${size}px; height:${size}px; border-radius:50%;
+            width:${size}px; height:${size}px; border-radius:50%;
             background:${color}; display:flex; align-items:center;
             justify-content:center; font-size:${Math.round(size*.42)}px;
-            border:2.5px solid rgba(255,255,255,.75); ${pulseStyle}">${emoji}</div>`,
+            border:2.5px solid rgba(255,255,255,.75);
+            ${dotStyle} ${pulseStyle}">${emoji}</div>`,
         className: '',
-        iconSize: [size, size],
+        iconSize:   [size, size],
         iconAnchor: [size/2, size/2],
-        popupAnchor: [0, -(size/2+4)]
+        popupAnchor:[0, -(size/2+4)]
     });
 }
 
-// ── All delivery data ─────────────────────────────────────────────────────
+// ── Delivery data ─────────────────────────────────────────────────────────
 var deliveries = [
     @foreach (var d in Model)
     {
@@ -320,6 +513,7 @@ var deliveries = [
         @:  eta: "@d.EstimatedDelivery.ToString("dd MMM yyyy")",
         @:  overdue: @d.IsOverdue.ToString().ToLower(),
         @:  agent: "@(d.AgentName ?? "")",
+        @:  isPending: @((d.Status == "Pending").ToString().ToLower()),
         @:  route: [
             @foreach (var r in d.RouteHistory)
             {
@@ -331,22 +525,28 @@ var deliveries = [
     }
 ];
 
-// ── Marker + polyline registry ────────────────────────────────────────────
-var markerMap  = {};   // id → marker
-var routeMap   = {};   // id → polyline[]
+// ── Registries ────────────────────────────────────────────────────────────
+var markerMap  = {};
+var routeMap   = {};
 var selectedId = null;
 
-// ── Draw all deliveries ───────────────────────────────────────────────────
+// ── Draw markers ──────────────────────────────────────────────────────────
 deliveries.forEach(function(d) {
-    var color  = statusColors[d.status] || '#94a3b8';
-    var emoji  = statusEmoji[d.status]  || '📍';
-    var isPulse = d.status === 'OutForDelivery';
-    var isDelivered = d.status === 'Delivered';
+    var color      = statusColors[d.status] || '#94a3b8';
+    var emoji      = statusEmoji[d.status]  || '📍';
+    var isPulse    = d.status === 'OutForDelivery';
+    var isDelivered= d.status === 'Delivered';
+    var label      = d.status === 'OutForDelivery' ? 'Out for Delivery' : d.status;
 
-    var label  = d.status === 'OutForDelivery' ? 'Out for Delivery' : d.status;
     var etaHtml = d.overdue
         ? `<span style="color:#ef4444;font-weight:600;">⚠ Overdue</span>`
         : `<span style="color:#22c55e;">${d.eta}</span>`;
+
+    var pendingNote = d.isPending
+        ? `<div style="font-size:10px;color:#94a3b8;margin-top:4px;font-style:italic;">
+               📍 City-pinned — GPS updates when shipped
+           </div>`
+        : '';
 
     var popupHtml = `
         <div>
@@ -361,7 +561,8 @@ deliveries.forEach(function(d) {
                 🏷 ${d.trackingId} &nbsp;·&nbsp; Order #${d.orderId}
             </div>
             ${d.agent ? `<div style="font-size:11px;color:#475569;margin-bottom:2px;">👤 ${d.agent}</div>` : ''}
-            <div style="font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08);">
+            ${pendingNote}
+            <div style="font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">
                 📅 ETA: ${etaHtml}
             </div>
             <div style="margin-top:8px;display:flex;gap:6px;">
@@ -377,8 +578,8 @@ deliveries.forEach(function(d) {
         </div>`;
 
     var marker = L.marker([d.lat, d.lng], {
-        icon: makeIcon(emoji, color, isPulse ? 44 : 36, isPulse)
-    }).addTo(map).bindPopup(popupHtml, { maxWidth: 240 });
+        icon: makeIcon(emoji, color, isPulse ? 44 : 36, isPulse, d.isPending)
+    }).addTo(map).bindPopup(popupHtml, { maxWidth: 250 });
 
     marker.on('click', function() {
         highlightCard(d.id);
@@ -387,52 +588,41 @@ deliveries.forEach(function(d) {
 
     markerMap[d.id] = marker;
 
-    // Draw route polyline (hidden initially)
+    // Draw route polyline
     if (d.route && d.route.length > 1) {
-        var coords = d.route.map(r => [r.lat, r.lng]);
-        var poly = L.polyline(coords, {
-            color: color, weight: 2.5, opacity: 0,
-            dashArray: '8 5'
+        var poly = L.polyline(d.route.map(r => [r.lat, r.lng]), {
+            color: color, weight: 2.5, opacity: 0, dashArray: '8 5'
         }).addTo(map);
         routeMap[d.id] = poly;
     }
-
-    // Destination pin (small)
-    if (!isDelivered) {
-        L.circleMarker([d.lat, d.lng], {
-            radius: 4, color: color, fillColor: color,
-            fillOpacity: 0.3, weight: 1, opacity: 0.4
-        }).addTo(map);
-    }
 });
 
-// ── Fit all markers ───────────────────────────────────────────────────────
+// ── Fit bounds ────────────────────────────────────────────────────────────
 if (deliveries.length > 0) {
-    var allLatLngs = deliveries.map(d => [d.lat, d.lng]);
-    map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50], maxZoom: 12 });
+    map.fitBounds(
+        L.latLngBounds(deliveries.map(d => [d.lat, d.lng])),
+        { padding: [50, 50], maxZoom: 12 }
+    );
 }
 
-// ── Pulse animation CSS ───────────────────────────────────────────────────
-var styleEl = document.createElement('style');
-styleEl.textContent = `
+// ── Pulse keyframe ────────────────────────────────────────────────────────
+var style = document.createElement('style');
+style.textContent = `
 @@keyframes pulseAnim {
-    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6), 0 3px 10px rgba(0,0,0,.5); }
-    70%  { box-shadow: 0 0 0 14px rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.5); }
-    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.5); }
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6), 0 3px 12px rgba(0,0,0,.4); }
+    70%  { box-shadow: 0 0 0 16px rgba(245,158,11,0), 0 3px 12px rgba(0,0,0,.4); }
+    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 3px 12px rgba(0,0,0,.4); }
 }`;
-document.head.appendChild(styleEl);
+document.head.appendChild(style);
 
-// ── Focus on delivery ─────────────────────────────────────────────────────
+// ── Functions ─────────────────────────────────────────────────────────────
 function focusDelivery(id, lat, lng) {
-    map.flyTo([lat, lng], 14, { animate: true, duration: 0.8 });
-    setTimeout(function() {
-        if (markerMap[id]) markerMap[id].openPopup();
-    }, 700);
+    map.flyTo([lat, lng], 13, { animate: true, duration: 0.8 });
+    setTimeout(function() { if (markerMap[id]) markerMap[id].openPopup(); }, 750);
     highlightCard(id);
     showRoute(id);
 }
 
-// ── Highlight sidebar card ────────────────────────────────────────────────
 function highlightCard(id) {
     if (selectedId) {
         var prev = document.getElementById('card-' + selectedId);
@@ -446,100 +636,54 @@ function highlightCard(id) {
     }
 }
 
-// ── Show route for selected delivery ─────────────────────────────────────
 function showRoute(id) {
-    // Hide all routes first
-    Object.keys(routeMap).forEach(function(key) {
-        routeMap[key].setStyle({ opacity: 0 });
-    });
-    // Show selected route
-    if (routeMap[id]) {
-        routeMap[id].setStyle({ opacity: 0.7 });
-        routeMap[id].bringToFront();
-    }
+    Object.values(routeMap).forEach(p => p.setStyle({ opacity: 0 }));
+    if (routeMap[id]) { routeMap[id].setStyle({ opacity: 0.7 }); routeMap[id].bringToFront(); }
 }
 
-// ── Filter by status ──────────────────────────────────────────────────────
 var currentFilter = 'All';
 
 function filterByStatus(status) {
     currentFilter = status;
-
-    // Update pill active states
-    document.querySelectorAll('.stat-pill').forEach(function(p) {
+    document.querySelectorAll('.s-pill').forEach(function(p) {
         p.classList.remove('active');
-        if (p.getAttribute('onclick').includes("'" + status + "'")) {
-            p.classList.add('active');
-        }
+        if (p.getAttribute('onclick').includes("'" + status + "'")) p.classList.add('active');
     });
+    applyFilters();
+}
 
-    var cards = document.querySelectorAll('.delivery-card');
+function searchDeliveries(val) { applyFilters(); }
+
+function applyFilters() {
     var searchVal = document.getElementById('searchInput').value.toLowerCase();
-
-    cards.forEach(function(card) {
-        var cardStatus  = card.getAttribute('data-status');
-        var cardSearch  = card.getAttribute('data-search');
-        var matchStatus = status === 'All' || cardStatus === status;
-        var matchSearch = !searchVal || cardSearch.includes(searchVal);
+    document.querySelectorAll('.d-card').forEach(function(card) {
+        var matchStatus = currentFilter === 'All' || card.getAttribute('data-status') === currentFilter;
+        var matchSearch = !searchVal || card.getAttribute('data-search').includes(searchVal);
         card.classList.toggle('hidden', !(matchStatus && matchSearch));
     });
-
-    // Show/hide markers
     deliveries.forEach(function(d) {
-        var matchStatus = status === 'All' || d.status === status;
-        var matchSearch = !searchVal || (d.name.toLowerCase() + d.trackingId.toLowerCase() + d.address.toLowerCase()).includes(searchVal);
+        var matchStatus = currentFilter === 'All' || d.status === currentFilter;
+        var matchSearch = !searchVal || (d.name + d.trackingId + d.address).toLowerCase().includes(searchVal);
+        var visible = matchStatus && matchSearch;
         if (markerMap[d.id]) {
-            if (matchStatus && matchSearch) {
-                if (!map.hasLayer(markerMap[d.id])) markerMap[d.id].addTo(map);
-            } else {
-                if (map.hasLayer(markerMap[d.id])) map.removeLayer(markerMap[d.id]);
-            }
+            if (visible && !map.hasLayer(markerMap[d.id])) markerMap[d.id].addTo(map);
+            if (!visible && map.hasLayer(markerMap[d.id])) map.removeLayer(markerMap[d.id]);
         }
     });
-
-    // Fit visible markers
     var visible = deliveries.filter(d => {
-        var matchStatus = status === 'All' || d.status === status;
+        var matchStatus = currentFilter === 'All' || d.status === currentFilter;
         return matchStatus;
     });
     if (visible.length > 0) {
-        var bounds = L.latLngBounds(visible.map(d => [d.lat, d.lng]));
-        map.flyToBounds(bounds, { padding: [50,50], maxZoom: 12, animate: true, duration: 0.8 });
+        map.flyToBounds(L.latLngBounds(visible.map(d => [d.lat, d.lng])),
+            { padding: [50,50], maxZoom: 12, animate: true, duration: 0.8 });
     }
 }
 
-// ── Search ────────────────────────────────────────────────────────────────
-function searchDeliveries(val) {
-    val = val.toLowerCase();
-    var cards = document.querySelectorAll('.delivery-card');
-    cards.forEach(function(card) {
-        var cardStatus  = card.getAttribute('data-status');
-        var cardSearch  = card.getAttribute('data-search');
-        var matchStatus = currentFilter === 'All' || cardStatus === currentFilter;
-        var matchSearch = !val || cardSearch.includes(val);
-        card.classList.toggle('hidden', !(matchStatus && matchSearch));
-    });
-
-    // Filter markers too
-    deliveries.forEach(function(d) {
-        var matchStatus = currentFilter === 'All' || d.status === currentFilter;
-        var searchStr   = (d.name + d.trackingId + d.address).toLowerCase();
-        var matchSearch = !val || searchStr.includes(val);
-        if (markerMap[d.id]) {
-            if (matchStatus && matchSearch) {
-                if (!map.hasLayer(markerMap[d.id])) markerMap[d.id].addTo(map);
-            } else {
-                if (map.hasLayer(markerMap[d.id])) map.removeLayer(markerMap[d.id]);
-            }
-        }
-    });
-}
-
-// ── Navigate to details/tracking ─────────────────────────────────────────
 function goToDetails(id)       { window.location.href = '/Delivery/Details/' + id; }
 function goToTracking(trackId) { window.location.href = '/Delivery/Tracking/' + trackId; }
 
-// ── Auto-refresh every 30 seconds ────────────────────────────────────────
+// Auto-refresh every 30s
 setTimeout(function() { location.reload(); }, 30000);
 </script>
 </body>

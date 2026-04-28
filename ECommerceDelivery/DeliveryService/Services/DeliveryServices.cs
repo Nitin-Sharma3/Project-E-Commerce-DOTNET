@@ -1,7 +1,7 @@
 ﻿using DeliveryService.DTOs;
 using DeliveryService.HttpClients;
 using DeliveryService.Models;
-using DeliveryService.Repositories; 
+using DeliveryService.Repositories;
 
 namespace DeliveryService.Services
 {
@@ -33,8 +33,39 @@ namespace DeliveryService.Services
             [DeliveryStatus.Failed] = (0.02, -0.02),
         };
 
+        // ── City → approximate GPS coordinates for Pending deliveries ─────────
+        // Used as fallback when CurrentLatitude/CurrentLongitude is null (new deliveries)
+        private static readonly Dictionary<string, (double Lat, double Lng)> CityCoordinates = new(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Bengaluru"] = (12.9716, 77.5946),
+            ["Bangalore"] = (12.9716, 77.5946),
+            ["Mumbai"] = (19.0760, 72.8777),
+            ["Delhi"] = (28.6139, 77.2090),
+            ["New Delhi"] = (28.6139, 77.2090),
+            ["Hyderabad"] = (17.3850, 78.4867),
+            ["Chennai"] = (13.0827, 80.2707),
+            ["Kolkata"] = (22.5726, 88.3639),
+            ["Pune"] = (18.5204, 73.8567),
+            ["Ahmedabad"] = (23.0225, 72.5714),
+            ["Jaipur"] = (26.9124, 75.7873),
+            ["Lucknow"] = (26.8467, 80.9462),
+            ["Noida"] = (28.5355, 77.3910),
+            ["Gurgaon"] = (28.4595, 77.0266),
+            ["Surat"] = (21.1702, 72.8311),
+            ["Indore"] = (22.7196, 75.8577),
+            ["Bhopal"] = (23.2599, 77.4126),
+            ["Patna"] = (25.5941, 85.1376),
+            ["Nagpur"] = (21.1458, 79.0882),
+            ["Coimbatore"] = (11.0168, 76.9558),
+            ["Kochi"] = (9.9312, 76.2673),
+            ["Visakhapatnam"] = (17.6868, 83.2185),
+            ["Chandigarh"] = (30.7333, 76.7794),
+            ["Bhubaneswar"] = (20.2961, 85.8245),
+            ["Vadodara"] = (22.3072, 73.1812),
+        };
+
         // ── Delivery → OrderAPI status mapping ────────────────────────────────
-        // OrderAPI statuses: Pending, Confirmed, Shipped, Delivered, Cancelled
         private static string? ToOrderStatus(DeliveryStatus s) => s switch
         {
             DeliveryStatus.Packed => "Confirmed",
@@ -63,6 +94,22 @@ namespace DeliveryService.Services
                     h.Status.ToString(), h.Remarks, h.Location,
                     h.Latitude, h.Longitude, h.Timestamp, h.UpdatedBy)).ToList()
         );
+
+        // ── Resolve coordinates for a delivery ────────────────────────────────
+        // Priority: 1) CurrentLatitude/Longitude (GPS from agent)
+        //           2) City lookup table (for Pending with no GPS yet)
+        //           3) India center as final fallback
+        private static (double Lat, double Lng) ResolveCoordinates(Delivery d)
+        {
+            if (d.CurrentLatitude.HasValue && d.CurrentLongitude.HasValue)
+                return (d.CurrentLatitude.Value, d.CurrentLongitude.Value);
+
+            if (CityCoordinates.TryGetValue(d.City?.Trim() ?? "", out var coords))
+                return coords;
+
+            // Final fallback: geographic center of India
+            return (20.5937, 78.9629);
+        }
 
         // ── CRUD ──────────────────────────────────────────────────────────────
 
@@ -125,13 +172,13 @@ namespace DeliveryService.Services
                 StatusHistory =
                 [
                     new DeliveryStatusHistory
-                {
-                    Status    = DeliveryStatus.Pending,
-                    Remarks   = $"Delivery created for Order #{dto.OrderId}",
-                    Location  = "Warehouse",
-                    Timestamp = DateTime.UtcNow,
-                    UpdatedBy = "System"
-                }
+                    {
+                        Status    = DeliveryStatus.Pending,
+                        Remarks   = $"Delivery created for Order #{dto.OrderId}",
+                        Location  = "Warehouse",
+                        Timestamp = DateTime.UtcNow,
+                        UpdatedBy = "System"
+                    }
                 ]
             };
 
@@ -175,14 +222,14 @@ namespace DeliveryService.Services
             var dto = new CreateDeliveryDto(
                 order.Id,
                 order.UserId,
-                order.ShippingAddress.FullName,     // FullName → RecipientName
+                order.ShippingAddress.FullName,
                 order.ShippingAddress.AddressLine1,
                 order.ShippingAddress.AddressLine2,
                 order.ShippingAddress.City,
                 order.ShippingAddress.State,
-                order.ShippingAddress.PostalCode,   // PostalCode → Pincode
+                order.ShippingAddress.PostalCode,
                 order.ShippingAddress.Country,
-                order.ShippingAddress.Phone,        // Phone → ContactPhone
+                order.ShippingAddress.Phone,
                 null,
                 items
             );
@@ -287,28 +334,39 @@ namespace DeliveryService.Services
         public async Task<IEnumerable<DeliveryMapPointDto>> GetAllForMapAsync()
         {
             var deliveries = await repo.GetAllAsync();
+
+            // ✅ FIX: Removed the filter `.Where(d => d.CurrentLatitude.HasValue && ...)`
+            // Previously this filtered out ALL Pending deliveries (which have no GPS yet).
+            // Now we include ALL deliveries and resolve coordinates via ResolveCoordinates():
+            //   - GPS coordinates if available (Shipped, OutForDelivery, Delivered)
+            //   - City-based lookup for Pending/Packed with no GPS yet
+            //   - India center as final fallback
+
             return deliveries
-                .Where(d => d.CurrentLatitude.HasValue && d.CurrentLongitude.HasValue)
-                .Select(d => new DeliveryMapPointDto(
-                    d.Id, d.OrderId, d.TrackingId,
-                    d.RecipientName,
-                    $"{d.AddressLine1}, {d.City}, {d.State}",
-                    d.Status.ToString(),
-                    d.CurrentLatitude!.Value,
-                    d.CurrentLongitude!.Value,
-                    d.EstimatedDeliveryDate,
-                    d.EstimatedDeliveryDate < DateTime.UtcNow
-                        && d.Status != DeliveryStatus.Delivered,
-                    d.DeliveryAgentName,
-                    d.StatusHistory
-                        .Where(h => h.Latitude.HasValue && h.Longitude.HasValue)
-                        .OrderBy(h => h.Timestamp)
-                        .Select(h => new RoutePointDto(
-                            h.Status.ToString(),
-                            h.Latitude!.Value, h.Longitude!.Value,
-                            h.Timestamp, h.Location))
-                        .ToList()
-                ));
+                .Select(d =>
+                {
+                    var (lat, lng) = ResolveCoordinates(d);
+                    return new DeliveryMapPointDto(
+                        d.Id, d.OrderId, d.TrackingId,
+                        d.RecipientName,
+                        $"{d.AddressLine1}, {d.City}, {d.State}",
+                        d.Status.ToString(),
+                        lat,
+                        lng,
+                        d.EstimatedDeliveryDate,
+                        d.EstimatedDeliveryDate < DateTime.UtcNow
+                            && d.Status != DeliveryStatus.Delivered,
+                        d.DeliveryAgentName,
+                        d.StatusHistory
+                            .Where(h => h.Latitude.HasValue && h.Longitude.HasValue)
+                            .OrderBy(h => h.Timestamp)
+                            .Select(h => new RoutePointDto(
+                                h.Status.ToString(),
+                                h.Latitude!.Value, h.Longitude!.Value,
+                                h.Timestamp, h.Location))
+                            .ToList()
+                    );
+                });
         }
     }
 }
