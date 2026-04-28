@@ -1,0 +1,690 @@
+﻿@model List<DeliveryMVC.Models.DeliveryMapPointViewModel>
+@{
+    Layout = null;
+    string StatusColor(string s) => s switch {
+        "Pending"        => "#94a3b8",
+        "Packed"         => "#0ea5e9",
+        "Shipped"        => "#2563eb",
+        "OutForDelivery" => "#f59e0b",
+        "Delivered"      => "#22c55e",
+        "Failed"         => "#ef4444",
+        _                => "#94a3b8"
+    };
+    string StatusEmoji(string s) => s switch {
+        "Pending"        => "⏳",
+        "Packed"         => "📦",
+        "Shipped"        => "🚛",
+        "OutForDelivery" => "🚴",
+        "Delivered"      => "✅",
+        "Failed"         => "❌",
+        _                => "📍"
+    };
+    string StatusLabel(string s) => s == "OutForDelivery" ? "Out for Delivery" : s;
+
+    var statuses = new[] { "All", "Pending", "Packed", "Shipped", "OutForDelivery", "Delivered", "Failed" };
+    var centerLat = Model.Any() ? Model.Average(m => m.Latitude) : 20.5937;
+    var centerLng = Model.Any() ? Model.Average(m => m.Longitude) : 78.9629;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Live Delivery Map — DeliveryOps</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --sidebar-bg: #0c111d;
+            --border: rgba(255,255,255,.07);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --subtle: #475569;
+            --surface: rgba(255,255,255,.04);
+            --accent: #2563eb;
+            --radius: 10px;
+        }
+
+        body {
+            font-family: 'Geist', -apple-system, sans-serif;
+            background: var(--sidebar-bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .shell { display: flex; height: 100vh; }
+
+        /* ══ SIDEBAR ══════════════════════════════════════════════════════════ */
+        .sidebar {
+            width: 340px;
+            min-width: 290px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .sidebar-head {
+            padding: 1rem 1.25rem .85rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .brand-row {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            margin-bottom: .6rem;
+        }
+
+        .brand-mark {
+            width: 30px; height: 30px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .brand-name { font-weight: 700; font-size: .9rem; color: #f1f5f9; letter-spacing: -.01em; }
+        .brand-sub  { font-size: .68rem; color: #475569; margin-left: auto; }
+
+        .back-link {
+            color: #475569;
+            font-size: .75rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            transition: color .12s;
+        }
+
+        .back-link:hover { color: #94a3b8; }
+
+        /* Status pills row */
+        .pills-row {
+            padding: .75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+        }
+
+        .s-pill {
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            background: rgba(255,255,255,.05);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: .25rem .6rem;
+            font-size: .7rem;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .s-pill:hover { border-color: rgba(255,255,255,.1); }
+        .s-pill.active { border-color: currentColor; background: rgba(255,255,255,.08); }
+        .s-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .s-count { font-weight: 700; font-size: .78rem; font-family: 'Geist Mono', monospace; }
+
+        /* Search */
+        .search-wrap {
+            padding: .65rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .search-box {
+            width: 100%;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 8px;
+            padding: .45rem .85rem .45rem 2rem;
+            color: #e2e8f0;
+            font-size: .8rem;
+            font-family: 'Geist', sans-serif;
+            outline: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: .7rem center;
+            transition: border-color .15s, background .15s;
+        }
+
+        .search-box::placeholder { color: #475569; }
+        .search-box:focus { border-color: rgba(37,99,235,.5); background-color: rgba(255,255,255,.07); }
+
+        /* Delivery list */
+        .delivery-list { flex: 1; overflow-y: auto; padding: .5rem; }
+        .delivery-list::-webkit-scrollbar { width: 3px; }
+        .delivery-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+
+        .d-card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: var(--radius);
+            padding: .75rem;
+            margin-bottom: .35rem;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .d-card:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); }
+        .d-card.selected { border-color: #2563eb; background: rgba(37,99,235,.1); }
+        .d-card.hidden { display: none; }
+
+        .dc-row1 { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .35rem; }
+        .dc-name { font-size: .82rem; font-weight: 600; color: #f1f5f9; }
+
+        .dc-badge {
+            font-size: .65rem;
+            font-weight: 600;
+            padding: .15rem .5rem;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: .25rem;
+            flex-shrink: 0;
+        }
+
+        .dc-tid {
+            font-family: 'Geist Mono', monospace;
+            font-size: .68rem;
+            color: #475569;
+            margin-bottom: .3rem;
+        }
+
+        .dc-addr {
+            font-size: .72rem;
+            color: #64748b;
+            margin-bottom: .35rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dc-footer { display: flex; justify-content: space-between; align-items: center; }
+        .dc-agent { font-size: .68rem; color: #475569; }
+        .dc-eta   { font-size: .68rem; }
+        .dc-eta-ok      { color: #22c55e; }
+        .dc-eta-overdue { color: #ef4444; font-weight: 600; }
+
+        /* Pending location hint */
+        .pending-hint {
+            font-size: .63rem;
+            color: #64748b;
+            font-style: italic;
+            margin-top: .2rem;
+        }
+
+        /* ══ MAP ══════════════════════════════════════════════════════════════ */
+        .map-wrap { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(12,17,29,.92);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: var(--radius);
+            padding: .65rem .9rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .overlay.top-left  { top: 1rem; left: 1rem; }
+        .overlay.top-right { top: 1rem; right: 1rem; }
+        .overlay.bottom-left { bottom: 1.5rem; left: 1rem; }
+
+        .ov-label {
+            font-size: .6rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: .25rem;
+        }
+
+        .ov-count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            line-height: 1;
+            font-family: 'Geist Mono', monospace;
+        }
+
+        .ov-sub { font-size: .68rem; color: #475569; margin-top: .15rem; }
+
+        .legend-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; font-size: .72rem; color: #94a3b8; }
+        .legend-row:last-child { margin-bottom: 0; }
+        .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+        /* Leaflet dark popup */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 12px;
+            color: #e2e8f0;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+        }
+        .leaflet-popup-tip { background: #1e293b; }
+        .leaflet-popup-content { margin: 12px 16px; font-family: 'Geist', sans-serif; min-width: 210px; }
+        .leaflet-popup-close-button { color: #64748b !important; }
+
+        /* Pending accuracy banner */
+        .accuracy-note {
+            padding: .5rem 1.25rem;
+            background: rgba(245,158,11,.06);
+            border-bottom: 1px solid rgba(245,158,11,.12);
+            font-size: .68rem;
+            color: #d97706;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            flex-shrink: 0;
+        }
+
+        @@keyframes pulseAnim {
+            0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6), 0 3px 10px rgba(0,0,0,.4); }
+            70%  { box-shadow: 0 0 0 14px rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.4); }
+            100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 3px 10px rgba(0,0,0,.4); }
+        }
+
+        @@media (max-width: 768px) {
+            .shell { flex-direction: column; }
+            .sidebar { width: 100%; min-width: 0; height: 45vh; }
+            .map-wrap { height: 55vh; }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar">
+
+        <div class="sidebar-head">
+            <div class="brand-row">
+                <div class="brand-mark">
+                    <i class="bi bi-truck-front-fill text-white" style="font-size:.82rem;"></i>
+                </div>
+                <span class="brand-name">Live Delivery Map</span>
+                <span class="brand-sub">@Model.Count on map</span>
+            </div>
+            <a href="/Delivery" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+
+        @if (Model.Any(d => d.Status == "Pending"))
+        {
+            <div class="accuracy-note">
+                <i class="bi bi-info-circle-fill"></i>
+                Pending deliveries are pinned to city center (no GPS yet)
+            </div>
+        }
+
+        <!-- Status filter pills -->
+        <div class="pills-row" id="filterPills">
+            @{
+                var groups = new[]
+                {
+                    ("All",            Model.Count,                                    "#94a3b8"),
+                    ("Pending",        Model.Count(d => d.Status == "Pending"),        "#94a3b8"),
+                    ("Packed",         Model.Count(d => d.Status == "Packed"),         "#0ea5e9"),
+                    ("Shipped",        Model.Count(d => d.Status == "Shipped"),        "#2563eb"),
+                    ("OutForDelivery", Model.Count(d => d.Status == "OutForDelivery"), "#f59e0b"),
+                    ("Delivered",      Model.Count(d => d.Status == "Delivered"),      "#22c55e"),
+                    ("Failed",         Model.Count(d => d.Status == "Failed"),         "#ef4444"),
+                };
+            }
+            @foreach (var (s, cnt, color) in groups)
+            {
+                <div class="s-pill @(s == "All" ? "active" : "")"
+                     style="color:@color;"
+                     onclick="filterByStatus('@s')">
+                    <div class="s-dot" style="background:@color;"></div>
+                    <span>@(s == "OutForDelivery" ? "OFD" : s)</span>
+                    <span class="s-count" style="color:@color;">@cnt</span>
+                </div>
+            }
+        </div>
+
+        <!-- Search -->
+        <div class="search-wrap">
+            <input type="text" class="search-box" id="searchInput"
+                   placeholder="Search recipient, tracking ID, city..."
+                   oninput="searchDeliveries(this.value)"/>
+        </div>
+
+        <!-- Card list -->
+        <div class="delivery-list" id="deliveryList">
+            @foreach (var d in Model)
+            {
+                var color = StatusColor(d.Status);
+                <div class="d-card"
+                     id="card-@d.DeliveryId"
+                     data-status="@d.Status"
+                     data-search="@d.RecipientName.ToLower() @d.TrackingId.ToLower() @d.FullAddress.ToLower()"
+                     onclick="focusDelivery(@d.DeliveryId, @d.Latitude, @d.Longitude)">
+
+                    <div class="dc-row1">
+                        <div class="dc-name">@d.RecipientName</div>
+                        <span class="dc-badge"
+                              style="background:@(color)22; color:@color; border:1px solid @(color)44;">
+                            @StatusEmoji(d.Status) @StatusLabel(d.Status)
+                        </span>
+                    </div>
+
+                    <div class="dc-tid">@d.TrackingId &nbsp;·&nbsp; Order #@d.OrderId</div>
+                    <div class="dc-addr"><i class="bi bi-geo-alt" style="margin-right:.3rem;"></i>@d.FullAddress</div>
+
+                    <div class="dc-footer">
+                        <span class="dc-agent">
+                            @if (!string.IsNullOrEmpty(d.AgentName))
+                            {
+                                <text><i class="bi bi-person" style="margin-right:.25rem;"></i>@d.AgentName</text>
+                            }
+                            else
+                            {
+                                <span style="font-style:italic;">Unassigned</span>
+                            }
+                        </span>
+                        <span class="dc-eta @(d.IsOverdue ? "dc-eta-overdue" : "dc-eta-ok")">
+                            @if (d.IsOverdue)
+                            {
+                                <text><i class="bi bi-exclamation-triangle"></i> Overdue</text>
+                            }
+                            else
+                            {
+                                <text><i class="bi bi-calendar-check"></i> @d.EstimatedDelivery.ToString("dd MMM")</text>
+                            }
+                        </span>
+                    </div>
+
+                    @if (d.Status == "Pending")
+                    {
+                        <div class="pending-hint">
+                            <i class="bi bi-building"></i> Pinned to city — GPS updates when shipped
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </aside>
+
+    <!-- ══ MAP ══ -->
+    <div class="map-wrap">
+        <div id="map"></div>
+
+        <!-- Live count -->
+        <div class="overlay top-left">
+            <div class="ov-label">Live Deliveries</div>
+            <div class="ov-count">@Model.Count</div>
+            <div class="ov-sub">on map simultaneously</div>
+        </div>
+
+        <!-- Legend -->
+        <div class="overlay top-right">
+            <div class="ov-label" style="margin-bottom:.5rem;">Legend</div>
+            @foreach (var (s, _, color) in new[] {
+                ("Pending","","#94a3b8"),("Packed","","#0ea5e9"),("Shipped","","#2563eb"),
+                ("OutForDelivery","","#f59e0b"),("Delivered","","#22c55e"),("Failed","","#ef4444")
+            })
+            {
+                <div class="legend-row">
+                    <div class="legend-dot" style="background:@color;"></div>
+                    @StatusLabel(s)
+                </div>
+            }
+        </div>
+
+        <!-- Hint -->
+        <div class="overlay bottom-left" style="font-size:.7rem; color:#475569;">
+            <i class="bi bi-hand-index" style="margin-right:.3rem;"></i>
+            Click marker or card to focus
+        </div>
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Map init ──────────────────────────────────────────────────────────────
+var map = L.map('map', { zoomControl: true })
+    .setView([@centerLat, @centerLng], 5);
+
+L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3']
+}).addTo(map);
+
+// ── Status config ─────────────────────────────────────────────────────────
+var statusColors = {
+    "Pending":"#94a3b8","Packed":"#0ea5e9","Shipped":"#2563eb",
+    "OutForDelivery":"#f59e0b","Delivered":"#22c55e","Failed":"#ef4444"
+};
+var statusEmoji = {
+    "Pending":"⏳","Packed":"📦","Shipped":"🚛",
+    "OutForDelivery":"🚴","Delivered":"✅","Failed":"❌"
+};
+
+// ── Marker factory ────────────────────────────────────────────────────────
+function makeIcon(emoji, color, size, pulse, isPending) {
+    size = size || 38;
+    var dotStyle = isPending
+        ? `opacity:0.7; border-style:dashed;`
+        : ``;
+    var pulseStyle = pulse
+        ? `animation:pulseAnim 1.5s infinite;`
+        : `box-shadow:0 3px 12px rgba(0,0,0,.5);`;
+
+    return L.divIcon({
+        html: `<div style="
+            width:${size}px; height:${size}px; border-radius:50%;
+            background:${color}; display:flex; align-items:center;
+            justify-content:center; font-size:${Math.round(size*.42)}px;
+            border:2.5px solid rgba(255,255,255,.75);
+            ${dotStyle} ${pulseStyle}">${emoji}</div>`,
+        className: '',
+        iconSize:   [size, size],
+        iconAnchor: [size/2, size/2],
+        popupAnchor:[0, -(size/2+4)]
+    });
+}
+
+// ── Delivery data ─────────────────────────────────────────────────────────
+var deliveries = [
+    @foreach (var d in Model)
+    {
+        @:{ id: @d.DeliveryId, orderId: @d.OrderId,
+        @:  trackingId: "@d.TrackingId",
+        @:  name: "@Html.Raw(d.RecipientName.Replace("\"","\\\""))",
+        @:  address: "@Html.Raw(d.FullAddress.Replace("\"","\\\""))",
+        @:  status: "@d.Status",
+        @:  lat: @d.Latitude, lng: @d.Longitude,
+        @:  eta: "@d.EstimatedDelivery.ToString("dd MMM yyyy")",
+        @:  overdue: @d.IsOverdue.ToString().ToLower(),
+        @:  agent: "@(d.AgentName ?? "")",
+        @:  isPending: @((d.Status == "Pending").ToString().ToLower()),
+        @:  route: [
+            @foreach (var r in d.RouteHistory)
+            {
+                @:{ status:"@r.Status", lat:@r.Latitude, lng:@r.Longitude,
+                @:  time:"@r.Timestamp.ToString("dd MMM HH:mm")", loc:"@Html.Raw((r.Location ?? "").Replace("\"","\\\""))" },
+            }
+        @:  ]
+        @:},
+    }
+];
+
+// ── Registries ────────────────────────────────────────────────────────────
+var markerMap  = {};
+var routeMap   = {};
+var selectedId = null;
+
+// ── Draw markers ──────────────────────────────────────────────────────────
+deliveries.forEach(function(d) {
+    var color      = statusColors[d.status] || '#94a3b8';
+    var emoji      = statusEmoji[d.status]  || '📍';
+    var isPulse    = d.status === 'OutForDelivery';
+    var isDelivered= d.status === 'Delivered';
+    var label      = d.status === 'OutForDelivery' ? 'Out for Delivery' : d.status;
+
+    var etaHtml = d.overdue
+        ? `<span style="color:#ef4444;font-weight:600;">⚠ Overdue</span>`
+        : `<span style="color:#22c55e;">${d.eta}</span>`;
+
+    var pendingNote = d.isPending
+        ? `<div style="font-size:10px;color:#94a3b8;margin-top:4px;font-style:italic;">
+               📍 City-pinned — GPS updates when shipped
+           </div>`
+        : '';
+
+    var popupHtml = `
+        <div>
+            <div style="font-weight:700;font-size:13px;color:${color};margin-bottom:6px;">
+                ${emoji} ${label}
+            </div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:3px;">${d.name}</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:3px;">
+                <i>📍 ${d.address}</i>
+            </div>
+            <div style="font-size:11px;color:#475569;margin-bottom:2px;">
+                🏷 ${d.trackingId} &nbsp;·&nbsp; Order #${d.orderId}
+            </div>
+            ${d.agent ? `<div style="font-size:11px;color:#475569;margin-bottom:2px;">👤 ${d.agent}</div>` : ''}
+            ${pendingNote}
+            <div style="font-size:11px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">
+                📅 ETA: ${etaHtml}
+            </div>
+            <div style="margin-top:8px;display:flex;gap:6px;">
+                <button onclick="goToDetails(${d.id})"
+                    style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit;">
+                    View Details
+                </button>
+                <button onclick="goToTracking('${d.trackingId}')"
+                    style="flex:1;background:rgba(255,255,255,.08);color:#e2e8f0;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit;">
+                    Track
+                </button>
+            </div>
+        </div>`;
+
+    var marker = L.marker([d.lat, d.lng], {
+        icon: makeIcon(emoji, color, isPulse ? 44 : 36, isPulse, d.isPending)
+    }).addTo(map).bindPopup(popupHtml, { maxWidth: 250 });
+
+    marker.on('click', function() {
+        highlightCard(d.id);
+        showRoute(d.id);
+    });
+
+    markerMap[d.id] = marker;
+
+    // Draw route polyline
+    if (d.route && d.route.length > 1) {
+        var poly = L.polyline(d.route.map(r => [r.lat, r.lng]), {
+            color: color, weight: 2.5, opacity: 0, dashArray: '8 5'
+        }).addTo(map);
+        routeMap[d.id] = poly;
+    }
+});
+
+// ── Fit bounds ────────────────────────────────────────────────────────────
+if (deliveries.length > 0) {
+    map.fitBounds(
+        L.latLngBounds(deliveries.map(d => [d.lat, d.lng])),
+        { padding: [50, 50], maxZoom: 12 }
+    );
+}
+
+// ── Pulse keyframe ────────────────────────────────────────────────────────
+var style = document.createElement('style');
+style.textContent = `
+@@keyframes pulseAnim {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6), 0 3px 12px rgba(0,0,0,.4); }
+    70%  { box-shadow: 0 0 0 16px rgba(245,158,11,0), 0 3px 12px rgba(0,0,0,.4); }
+    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0), 0 3px 12px rgba(0,0,0,.4); }
+}`;
+document.head.appendChild(style);
+
+// ── Functions ─────────────────────────────────────────────────────────────
+function focusDelivery(id, lat, lng) {
+    map.flyTo([lat, lng], 13, { animate: true, duration: 0.8 });
+    setTimeout(function() { if (markerMap[id]) markerMap[id].openPopup(); }, 750);
+    highlightCard(id);
+    showRoute(id);
+}
+
+function highlightCard(id) {
+    if (selectedId) {
+        var prev = document.getElementById('card-' + selectedId);
+        if (prev) prev.classList.remove('selected');
+    }
+    selectedId = id;
+    var card = document.getElementById('card-' + id);
+    if (card) {
+        card.classList.add('selected');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function showRoute(id) {
+    Object.values(routeMap).forEach(p => p.setStyle({ opacity: 0 }));
+    if (routeMap[id]) { routeMap[id].setStyle({ opacity: 0.7 }); routeMap[id].bringToFront(); }
+}
+
+var currentFilter = 'All';
+
+function filterByStatus(status) {
+    currentFilter = status;
+    document.querySelectorAll('.s-pill').forEach(function(p) {
+        p.classList.remove('active');
+        if (p.getAttribute('onclick').includes("'" + status + "'")) p.classList.add('active');
+    });
+    applyFilters();
+}
+
+function searchDeliveries(val) { applyFilters(); }
+
+function applyFilters() {
+    var searchVal = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.d-card').forEach(function(card) {
+        var matchStatus = currentFilter === 'All' || card.getAttribute('data-status') === currentFilter;
+        var matchSearch = !searchVal || card.getAttribute('data-search').includes(searchVal);
+        card.classList.toggle('hidden', !(matchStatus && matchSearch));
+    });
+    deliveries.forEach(function(d) {
+        var matchStatus = currentFilter === 'All' || d.status === currentFilter;
+        var matchSearch = !searchVal || (d.name + d.trackingId + d.address).toLowerCase().includes(searchVal);
+        var visible = matchStatus && matchSearch;
+        if (markerMap[d.id]) {
+            if (visible && !map.hasLayer(markerMap[d.id])) markerMap[d.id].addTo(map);
+            if (!visible && map.hasLayer(markerMap[d.id])) map.removeLayer(markerMap[d.id]);
+        }
+    });
+    var visible = deliveries.filter(d => {
+        var matchStatus = currentFilter === 'All' || d.status === currentFilter;
+        return matchStatus;
+    });
+    if (visible.length > 0) {
+        map.flyToBounds(L.latLngBounds(visible.map(d => [d.lat, d.lng])),
+            { padding: [50,50], maxZoom: 12, animate: true, duration: 0.8 });
+    }
+}
+
+function goToDetails(id)       { window.location.href = '/Delivery/Details/' + id; }
+function goToTracking(trackId) { window.location.href = '/Delivery/Tracking/' + trackId; }
+
+// Auto-refresh every 30s
+setTimeout(function() { location.reload(); }, 30000);
+</script>
+</body>
+</html>
